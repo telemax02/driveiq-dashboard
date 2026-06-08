@@ -427,9 +427,12 @@ const mapObserver=new IntersectionObserver(function(entries){
 
 
 
+var _lastUpdatedAt=null;
 async function loadDashboardData(){
   var res=await _sb.from('latest_run').select('data, updated_at').eq('id',1).single();
   if(res.error||!res.data){ console.error('Failed to load data',res.error); return; }
+  if(_lastUpdatedAt&&res.data.updated_at===_lastUpdatedAt) return;
+  _lastUpdatedAt=res.data.updated_at;
   var d=res.data.data;
   vehicles=d.vehicles||[];
   incData=d.incidents||[];
@@ -458,6 +461,7 @@ async function loadDashboardData(){
   }
 }
 Promise.all([initDrivers(),loadDashboardData()]).then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
+setInterval(function(){ loadDashboardData().then(function(){ renderRanking(); }); }, 5*60*1000);
 
 // ── Leaderboard ────────────────────────────────────────────────────────────
 // Default to last fully-completed week (Sunday has passed)
