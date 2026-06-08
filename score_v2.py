@@ -26,7 +26,7 @@ def score_trip(t, fleet_mean):
         spd=sub(sx/cv,0,1.0); raw=round(spd_w*spd+brk_w*brk+crn_w*crn+acc_w*acc)
     else:
         spd=None; raw=round(brk_w*brk+crn_w*crn+acc_w*acc)
-    shrink=min(1.0,km/20); total=round(shrink*raw+(1-shrink)*fleet_mean)
+    shrink=min(1.0,km/15); total=round(shrink*raw+(1-shrink)*fleet_mean)
     mx=t.get('max_speed_over_limit_kmh',0); ex=t.get('speeding_excess_kmh_s',0)
     dt=datetime.datetime.utcfromtimestamp(t['begin']+BNE)
     sl=t.get('start_location',{}); el=t.get('end_location',{})
@@ -52,7 +52,7 @@ for did,pl in DEVS.items():
         m=t.get('moving_time_s',1) or 1; dur=t.get('duration',m)
         if dur<=m*5: raw_trips.append(t.get('mileage_km',0))
 
-FLEET_MEAN=80
+FLEET_MEAN=88
 veh=[]; inc=[]
 for did,(pl,ints) in raw_intervals.items():
     trips=[score_trip(t,FLEET_MEAN) for t in ints]
