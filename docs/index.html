@@ -207,6 +207,7 @@ function driverInitials(d){ var f=(d.first||'').trim(),l=(d.last||'').trim(); re
 const GOLD='#EF9F27';
 function sc(s){if(s>=90)return'var(--success)';if(s>=70)return'var(--info)';if(s>=50)return'var(--warning)';return'var(--danger)';}
 function stars(s){if(s>=90)return'★★★★★';if(s>=80)return'★★★★☆';if(s>=70)return'★★★☆☆';if(s>=60)return'★★☆☆☆';return'★☆☆☆☆';}
+function starsHalf(s){var v=Math.round(s/10)/2;var n=(v%1===0)?v.toFixed(0):v.toFixed(1);return'<span style="font-size:15px;font-weight:700;color:'+sc(s)+';">'+(n==='5'?'5.0':n)+'</span><span style="font-size:11px;color:'+sc(s)+';margin-left:2px;">★</span>';}
 function tot(t){if(t.lc)return Math.round(0.364*t.brk+0.364*t.crn+0.273*t.acc);return Math.round(0.45*t.spd+0.20*t.brk+0.20*t.crn+0.15*t.acc);}
 function tripSize(km){if(km<10)return'short';if(km>=25)return'long';return'standard';}
 function trendIcon(t,sz){sz=sz||13;if(t==='improving')return'<i class="ti ti-trending-up" style="font-size:'+sz+'px;color:var(--success);" title="Improving"></i>';if(t==='declining')return'<i class="ti ti-trending-down" style="font-size:'+sz+'px;color:var(--danger);" title="Declining"></i>';if(t==='stable')return'<i class="ti ti-minus" style="font-size:'+sz+'px;color:var(--text3);" title="Stable"></i>';return'<span style="color:var(--text3);font-size:10px;">—</span>';}
@@ -329,8 +330,8 @@ function selectV(plate){
       {k:'Cornering',v:t.crn,w:t.lc?0.364:0.20,mx:t.lc?36:20}
     ];
     const cH=comps.map(function(c){
-      if(c.v===null)return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cv" style="color:var(--text3)">—</div><div class="cs">—</div></div>';
-      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cv" style="color:'+sc(c.v)+';">'+Math.round(c.v)+'</div><div class="cs">'+stars(c.v)+'</div></div>';
+      if(c.v===null)return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs" style="color:var(--text3);font-size:13px;">—</div></div>';
+      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs">'+starsHalf(c.v)+'</div></div>';
     }).join('');
     const sz=tripSize(t.km);
     const szTag=sz==='short'?'<span class="tag ts" style="margin-left:4px;" data-tip="Short trip: under 10km">Short trip</span>'
