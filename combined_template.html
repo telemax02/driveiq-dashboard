@@ -587,6 +587,7 @@ function renderDrivers(){
   });
   buildAlphaBar();
 }
+function isValidEmail(v){ return !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
 function saveDr(plate){
   var pid = plate.replace(/\s/g,'_');
   var entry={
@@ -596,6 +597,12 @@ function saveDr(plate){
     sex:   (document.getElementById('dr-sex-'+pid)||{value:''}).value,
     email: (document.getElementById('dr-email-'+pid)||{value:''}).value
   };
+  var emailEl=document.getElementById('dr-email-'+pid);
+  if(!isValidEmail(entry.email)){
+    if(emailEl){ emailEl.style.borderColor='var(--danger)'; emailEl.title='Please enter a valid email address'; }
+    return;
+  }
+  if(emailEl){ emailEl.style.borderColor=''; emailEl.title=''; }
   _drCache[plate]=entry;
   _sb.from('drivers').upsert({plate:plate,first_name:entry.first,last_initial:entry.last,age:entry.age,sex:entry.sex,email:entry.email}).then(function(){});
   var av = document.getElementById('av-'+pid);
