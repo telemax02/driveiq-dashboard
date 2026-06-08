@@ -134,7 +134,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   ══════════════════════════════════════════ -->
   <div id="view-dash">
     <div class="stats">
-      <div class="stat" id="fleet-avg-card" style="display:flex;gap:14px;align-items:flex-start;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div style="font-size:11px;color:var(--gold);">&#9733;&#9733;&#9733;&#9733;&#9734;</div><span id="s-trend"></span></div></div><div id="tier-breakdown" style="flex:1;padding-top:20px;"></div></div>
+      <div class="stat" id="fleet-avg-card" style="display:flex;gap:14px;align-items:flex-start;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div id="s-avg-stars" style="font-size:11px;letter-spacing:0.5px;">&#9733;&#9733;&#9733;&#9733;&#9734;</div><span id="s-trend"></span></div></div><div id="fleet-comp-avgs" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:5px;align-self:stretch;padding-top:6px;"></div></div>
       <div class="stat"><div class="lbl">Scored trips</div><div class="val" id="s-trips">—</div><div class="sub"><span class="s-range">—</span> &middot; <span style="color:var(--text2);font-weight:600;"><span id="s-vehs">—</span></span> <span style="color:var(--text2);font-weight:600;">Active</span></div></div>
       <div style="align-self:flex-end;padding-bottom:10px;text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Last updated</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-updated">—</div></div>
     </div>
@@ -652,21 +652,19 @@ const mapObserver=new IntersectionObserver(function(entries){
   entries.forEach(function(e){if(e.isIntersecting)initLeafletMap(e.target);});
 },{threshold:0.1});
 
-// Tier breakdown
-(function(){
-  const tiers=[{label:'Excellent',min:90,max:101,col:'var(--success)'},{label:'Good',min:70,max:90,col:'var(--info)'},{label:'Average',min:50,max:70,col:'var(--warning)'},{label:'Poor',min:0,max:50,col:'var(--danger)'}];
-  const el=document.getElementById('tier-breakdown');const n=vehicles.length;
-  tiers.forEach(function(tier){
-    const count=vehicles.filter(function(v){return v.avg>=tier.min&&v.avg<tier.max;}).length;
-    if(count===0)return;
-    const pct=Math.round(count/n*100);
-    const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:5px;margin-bottom:4px;';
-    row.innerHTML='<span style="font-size:9px;color:'+tier.col+';min-width:40px;letter-spacing:.5px;">'+tier.label+'</span>'
-      +'<div style="flex:1;background:var(--bg3);border-radius:2px;height:3px;"><div style="background:'+tier.col+';height:3px;border-radius:2px;width:'+pct+'%;"></div></div>'
-      +'<span style="font-size:9px;color:var(--text2);min-width:34px;text-align:right;">'+count+' <span style="color:var(--text3);">('+pct+'%)</span></span>';
-    el.appendChild(row);
-  });
-})();
+function renderFleetComps(){
+  var el=document.getElementById('fleet-comp-avgs');
+  if(!el||!vehicles.length)return;
+  var comps=[['Speeding','spd_avg'],['Braking','brk_avg'],['Acceleration','acc_avg'],['Cornering','crn_avg']];
+  el.innerHTML=comps.map(function(c){
+    var vals=vehicles.map(function(v){return v[c[1]];}).filter(function(x){return x!==null&&x!==undefined;});
+    var avg=vals.length?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length):null;
+    return'<div style="display:flex;align-items:center;gap:6px;">'
+      +'<span style="font-size:9px;color:var(--text3);min-width:72px;">'+c[0]+'</span>'
+      +(avg!==null?'<span style="font-size:11px;letter-spacing:0.5px;">'+starsHalf(avg)+'</span>':'<span style="color:var(--text3);font-size:11px;">—</span>')
+    +'</div>';
+  }).join('');
+}
 
 
 
@@ -683,6 +681,9 @@ async function loadDashboardData(){
   // Stat cards
   var fa=d.fleet_avg||0, ft=d.fleet_trend||0;
   document.getElementById('s-avg').textContent=fa;
+  var starsEl=document.getElementById('s-avg-stars');
+  if(starsEl)starsEl.innerHTML=starsHalf(fa);
+  renderFleetComps();
   document.getElementById('s-trips').textContent=d.total_trips||'';
   document.getElementById('s-vehs').textContent=d.num_vehicles||'';
   document.querySelectorAll('.s-range').forEach(function(el){ el.textContent=d.date_range||''; });
