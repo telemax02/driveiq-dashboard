@@ -91,6 +91,9 @@ def _compute_weeks(vehicles):
                 'acc': round(sum(t['acc'] * t['km'] for t in trps) / km),
                 'crn': round(sum(t['crn'] * t['km'] for t in trps) / km),
                 'trend': trend,
+                'short': sum(1 for t in trps if t.get('km', 0) < 10),
+                'std':   sum(1 for t in trps if 10 <= t.get('km', 0) < 25),
+                'lng':   sum(1 for t in trps if t.get('km', 0) >= 25),
             })
         rankings.sort(key=lambda r: r['score'], reverse=True)
         for j, r in enumerate(rankings): r['rank'] = j + 1

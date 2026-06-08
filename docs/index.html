@@ -520,7 +520,7 @@ function renderLeaderboard(){
       '<div class="rk'+(medal?' medal':'')+'">'+( medal||'#'+r.rank)+'</div>'
       +'<div>'
         +(drName(r.plate)?'<div style="font-size:12px;font-weight:600;">'+drName(r.plate)+(drAge(r.plate)?'<span style="font-size:9px;font-weight:400;color:var(--text3);margin-left:5px;">'+drAge(r.plate)+'</span>':'')+'</div>':'') 
-        +'<div style="font-size:10px;color:var(--text3);">'+(drName(r.plate)?r.plate+' &middot; ':'')+r.make+' &middot; '+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'
+        +'<div style="font-size:10px;color:var(--text3);">'+(drName(r.plate)?r.plate+' &middot; ':'')+r.make+' &middot; '+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'+(r.short||r.std||r.lng?'<div style="font-size:9px;color:var(--text3);margin-top:1px;">'+(r.short?r.short+' short':'')+(r.short&&(r.std||r.lng)?' &middot; ':'')+(r.std?r.std+' std':'')+(r.std&&r.lng?' &middot; ':'')+(r.lng?r.lng+' long':'')+'</div>':'')
         +'<div class="bwrap"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
       +'</div>'
       +'<div class="sc-cell hide-m" style="color:'+sc(r.score)+';">'+r.score+'</div>'
