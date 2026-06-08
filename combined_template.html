@@ -31,7 +31,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .slabel{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
 .rank-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--radius);cursor:pointer;border:0.5px solid transparent;transition:background .15s;}
 .rank-row:hover{background:var(--bg2);} .rank-row.active{background:var(--bg2);border-color:var(--border);}
-.bwrap{flex:1;height:3px;background:rgba(255,255,255,0.12);border-radius:2px;overflow:hidden;} .bfill{height:100%;border-radius:2px;}
+.bwrap{flex:1;height:3px;background:transparent;border-radius:2px;overflow:hidden;} .bfill{height:100%;border-radius:2px;}
 .trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;}
 .comps{display:flex;gap:6px;} .comp{text-align:center;flex:1;}
 .comp .ck{font-size:10px;color:var(--text3);} .comp .cv{font-size:13px;font-weight:500;margin-top:2px;} .comp .cs{font-size:9px;color:var(--gold);margin-top:1px;}
@@ -494,7 +494,7 @@ function renderRanking(){
         '</div>'+
         (dName?'<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">'+v.plate+' &middot; '+v.make+'</div>':
                 '<div style="font-size:10px;color:var(--text2);margin-bottom:2px;">'+v.make+'</div>')+
-        '<div class="bwrap"><div class="bfill" style="width:'+v.avg+'%;background:'+sc(v.avg)+';"></div></div>'+
+        '<div class="bwrap" style="background:'+sc(v.avg)+'26;"><div class="bfill" style="width:'+v.avg+'%;background:'+sc(v.avg)+';"></div></div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:54px;">'+
         '<div style="font-size:14px;font-weight:500;color:'+sc(v.avg)+';">'+v.avg+'</div>'+
@@ -616,7 +616,7 @@ function renderTrips(v){
       +'<div class="comps">'+cH+'</div>'
       +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">'
         +'<span style="font-size:10px;color:var(--text3);white-space:nowrap;">Total</span>'
-        +'<div class="bwrap" style="height:5px;"><div class="bfill" style="width:'+score+'%;background:'+sc(score)+';"></div></div>'
+        +'<div class="bwrap" style="height:5px;background:'+sc(score)+'26;"><div class="bfill" style="width:'+score+'%;background:'+sc(score)+';"></div></div>'
         +'<span style="font-size:11px;font-weight:500;color:'+sc(score)+';white-space:nowrap;">'+score+'/100</span>'
       +'</div>';
     card.appendChild(infoDiv);
@@ -812,7 +812,7 @@ function renderLeaderboard(){
       +'<div>'
         +(drName(r.plate)?'<div style="font-size:12px;font-weight:600;">'+drName(r.plate)+ageTag(drAge(r.plate))+'</div>':'') 
         +'<div style="font-size:10px;color:var(--text3);">'+(drName(r.plate)?r.plate+' &middot; ':'')+r.make+' &middot; '+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'+(r.short||r.std||r.lng?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">'+(r.short?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--success-bg);color:var(--success);">'+r.short+' Short</span>':'')+(r.std?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);">'+r.std+' Standard</span>':'')+(r.lng?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--info-bg);color:var(--info);">'+r.lng+' Long</span>':'')+'</div>':'')
-        +'<div class="bwrap"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
+        +'<div class="bwrap" style="background:'+sc(r.score)+'26;"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
       +'</div>'
       +'<div class="sc-cell hide-m" style="color:'+sc(r.score)+';">'+r.score+'</div>'
       +'<div class="comp-cell"><span style="font-size:10px;letter-spacing:0;">'+(r.spd!==null?starsHalf(r.spd):'<span style="color:var(--text3)">—</span>')+'</span></div>'
