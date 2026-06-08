@@ -311,7 +311,7 @@ function selectV(plate){
       +[['Speeding',v.spd_avg],['Braking',v.brk_avg],['Acceleration',v.acc_avg],['Cornering',v.crn_avg]].map(function(p){
           var lbl=p[0],val=p[1];
           if(val===null||val===undefined)return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:13px;color:var(--text3);">—</div></div>';
-          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:10px;margin-top:2px;letter-spacing:1px;">'+starsHalf(val)+'</div></div>';
+          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:11.5px;margin-top:2px;letter-spacing:1px;">'+starsHalf(val)+'</div></div>';
       }).join('')
       +'</div>'
       +'<span style="font-size:20px;font-weight:500;color:'+sc(v.avg)+';">'+v.avg+'</span>'
@@ -331,7 +331,7 @@ function selectV(plate){
     ];
     const cH=comps.map(function(c){
       if(c.v===null)return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs" style="font-size:13px;margin-top:4px;color:var(--text3);">—</div></div>';
-      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs" style="font-size:10px;margin-top:4px;letter-spacing:1px;">'+starsHalf(c.v)+'</div></div>';
+      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs" style="font-size:11.5px;margin-top:4px;letter-spacing:1px;">'+starsHalf(c.v)+'</div></div>';
     }).join('');
     const sz=tripSize(t.km);
     const szTag=sz==='short'?'<span class="tag ts" style="margin-left:4px;" data-tip="Short trip: under 10km">Short trip</span>'
