@@ -730,6 +730,7 @@ let lbIdx=0; // recalculated by loadDashboardData()
 function changeWeek(dir){
   lbIdx=Math.max(0,Math.min(weeksData.length-1,lbIdx+dir));
   renderLeaderboard();
+  setTimeout(triggerPodiumConfetti,180);
 }
 
 function renderLeaderboard(){
