@@ -106,6 +106,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .dr-saved{font-size:10px;color:var(--success);opacity:0;transition:opacity .4s;margin-top:6px;height:14px;}
 .dr-saved.show{opacity:1;}
 .dr-name-tag{font-size:11px;color:var(--text2);margin-top:1px;}
+.tf-btn{font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;border:0.5px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;transition:background .15s,color .15s;}
+.tf-btn:hover{background:var(--bg2);color:var(--text2);}
+.tf-btn.tf-active{background:var(--info-bg);color:var(--info);border-color:var(--info);}
 </style>
 </head>
 <body>
@@ -124,7 +127,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
     </div>
-    <span class="badge">Pre-calibration</span>
+    <span class="badge s-range">—</span>
   </div>
 
   <!-- ══════════════════════════════════════════
@@ -140,7 +143,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <div><div class="slabel">Vehicle ranking &mdash; click to view trips</div><div id="ranking"></div></div>
       <div><div class="slabel" id="trip-label">Select a vehicle</div>
       <div id="vehicle-summary"></div>
-      <div id="trips" style="max-height:615px;overflow-y:auto;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;"><div class="empty"><i class="ti ti-arrow-left" style="font-size:18px;display:block;margin-bottom:8px;"></i>Click a vehicle to see all trips</div></div></div>
+      <div id="trip-filters" style="display:none;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;"><span style="font-size:10px;color:var(--text3);margin-right:2px;">Filter:</span><button class="tf-btn tf-active" data-f="all" onclick="setTripFilter('all')">All</button><button class="tf-btn" data-f="short" onclick="setTripFilter('short')">Short</button><button class="tf-btn" data-f="standard" onclick="setTripFilter('standard')">Standard</button><button class="tf-btn" data-f="long" onclick="setTripFilter('long')">Long</button><span style="font-size:10px;color:var(--text3);margin-left:6px;">Sort:</span><button class="tf-btn tf-active" data-s="date" onclick="setTripSort('date')">Date</button><button class="tf-btn" data-s="score" onclick="setTripSort('score')">Score</button></div>
+      <div id="trips" style="max-height:615px;overflow-y:auto;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;"><div class="empty"><i class="ti ti-car" style="font-size:22px;display:block;margin-bottom:8px;color:var(--text3);"></i><div style="font-weight:500;margin-bottom:4px;">Select a vehicle</div><div style="font-size:11px;color:var(--text3);">Choose any vehicle from the ranking to view its full trip history and scores.</div></div></div></div>
     </div>
   </div>
 
@@ -158,10 +162,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <span></span>
       <span>Vehicle</span>
       <span class="right hide-m">Score</span>
-      <span class="right">Spd</span>
-      <span class="right">Brk</span>
-      <span class="right hide-m">Acc</span>
-      <span class="right hide-m">Crn</span>
+      <span class="right" title="Speeding">Spd</span>
+      <span class="right" title="Braking">Brk</span>
+      <span class="right hide-m" title="Acceleration">Acc</span>
+      <span class="right hide-m" title="Cornering">Crn</span>
       <span></span>
     </div>
     <div id="lb-list"></div>
@@ -430,6 +434,9 @@ function switchTab(tab){
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
 let sel=null;
+let tripFilter='all',tripSort='date',selVData=null;
+function setTripFilter(f){tripFilter=f;document.querySelectorAll('[data-f]').forEach(function(b){b.classList.toggle('tf-active',b.dataset.f===f);});if(selVData)renderTrips(selVData);}
+function setTripSort(s){tripSort=s;document.querySelectorAll('[data-s]').forEach(function(b){b.classList.toggle('tf-active',b.dataset.s===s);});if(selVData)renderTrips(selVData);}
 function renderRanking(){
   const el=document.getElementById('ranking');el.innerHTML='';
   const M=['🥇','🥈','🥉'];
@@ -452,7 +459,7 @@ function renderRanking(){
           (dName
             ? '<span style="font-size:12px;font-weight:600;">'+dName+'</span>'
             : '<span style="font-size:11px;font-weight:500;">'+v.plate+'</span>')+
-          (v.low_cov?'<span style="font-size:9px;color:var(--warning);">low cov</span>':'')+
+          (v.low_cov?'<span style="font-size:9px;color:var(--warning);" title="Limited GPS coverage on some trips">GPS limited</span>':'')+
         '</div>'+
         (dName?'<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">'+v.plate+' &middot; '+v.make+'</div>':
                 '<div style="font-size:10px;color:var(--text2);margin-bottom:2px;">'+v.make+'</div>')+
@@ -519,7 +526,23 @@ function selectV(plate){
     +predText
   +'</div>';
 
-  v.trips.forEach(function(t){
+  selVData=v;
+  tripFilter='all';tripSort='date';
+  document.querySelectorAll('[data-f]').forEach(function(b){b.classList.toggle('tf-active',b.dataset.f==='all');});
+  document.querySelectorAll('[data-s]').forEach(function(b){b.classList.toggle('tf-active',b.dataset.s==='date');});
+  var tf=document.getElementById('trip-filters');
+  if(tf)tf.style.display='flex';
+  renderTrips(v);
+}
+
+function renderTrips(v){
+  const el=document.getElementById('trips');
+  el.innerHTML='';
+  var trips=v.trips.slice();
+  if(tripFilter!=='all')trips=trips.filter(function(t){return tripSize(t.km)===tripFilter;});
+  if(tripSort==='score')trips=trips.slice().sort(function(a,b){return tot(b)-tot(a);});
+  if(!trips.length){el.innerHTML='<div class="empty" style="padding:20px;text-align:center;color:var(--text3);">No '+tripFilter+' trips found.</div>';return;}
+  trips.forEach(function(t){
     const score=tot(t);
     const comps=[
       {k:'Speeding',v:t.spd,w:t.lc?null:0.45,mx:45},
@@ -535,7 +558,7 @@ function selectV(plate){
     const szTag=sz==='short'?'<span class="tag ts" style="margin-left:4px;" data-tip="Short trip: under 10km">Short trip</span>'
                :sz==='long'?'<span class="tag tl" style="margin-left:4px;" data-tip="Long trip: 25km or more">Long trip</span>'
                :'<span class="tag" style="margin-left:4px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);" data-tip="Standard trip: 10–24km">Standard</span>';
-    const rpmTag=t.rpm_s>3?'<span class="tag" style="margin-left:4px;background:#3b0764;color:#d8b4fe;">⚡ High RPM</span>':'';
+    const rpmTag=t.rpm_s>3?'<span class="tag" style="margin-left:4px;background:#3b0764;color:#d8b4fe;" title="High engine RPM detected — consider changing gears earlier to reduce wear and improve efficiency">⚡ High RPM</span>':'';
     const parts=t.t.split('→');
     const startTime=parts[0]||t.t;
     const endTime=parts[1]||'';
@@ -571,6 +594,9 @@ function selectV(plate){
       mapDiv=document.createElement('div');
       mapDiv.className='trip-map-sq';
       mapDiv.id=mapId;
+      mapDiv.style.cursor='pointer';
+      mapDiv.title='Click to expand map';
+      mapDiv.onclick=(function(sl,so,el2,eo){return function(){expandMap(sl,so,el2,eo);};})(t.slat,t.slon,t.elat,t.elon);
       card.appendChild(mapDiv);
     }
     el.appendChild(card);
@@ -582,11 +608,30 @@ function selectV(plate){
   });
 }
 
+function expandMap(slat,slon,elat,elon){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var box=document.createElement('div');
+  box.style.cssText='width:min(90vw,700px);height:min(80vh,520px);border-radius:12px;overflow:hidden;position:relative;';
+  var close=document.createElement('button');
+  close.innerHTML='&times;';
+  close.style.cssText='position:absolute;top:8px;right:8px;z-index:10000;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:18px;cursor:pointer;line-height:1;';
+  close.onclick=function(){ov.remove();};
+  var md=document.createElement('div');
+  md.style.cssText='width:100%;height:100%;';
+  md.dataset.slat=slat;md.dataset.slon=slon;md.dataset.elat=elat;md.dataset.elon=elon;md.dataset.interactive='true';
+  box.appendChild(md);box.appendChild(close);ov.appendChild(box);
+  document.body.appendChild(ov);
+  initLeafletMap(md);
+}
+
 function initLeafletMap(mapDiv){
   if(mapDiv._mapDone)return;mapDiv._mapDone=true;
   const slat=+mapDiv.dataset.slat,slon=+mapDiv.dataset.slon;
   const elat=+mapDiv.dataset.elat,elon=+mapDiv.dataset.elon;
-  const map=L.map(mapDiv,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false});
+  const inter=mapDiv.dataset.interactive==='true';
+  const map=L.map(mapDiv,{zoomControl:inter,attributionControl:false,dragging:inter,scrollWheelZoom:inter,doubleClickZoom:inter,touchZoom:inter});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
   const sIcon=L.divIcon({html:'<div style="background:#22c55e;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
   const eIcon=L.divIcon({html:'<div style="background:#ef4444;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
@@ -713,7 +758,7 @@ function renderLeaderboard(){
         +'<div class="podium-comps">'
           +[['Spd',r.spd],['Brk',r.brk],['Acc',r.acc],['Crn',r.crn]].map(function(p){
             return'<div class="podium-comp"><div class="ck">'+p[0]+'</div>'
-              +(p[1]===null?'<div class="cv" style="color:var(--text3);">—</div>':'<div class="cv" style="color:'+sc(p[1])+';">'+p[1]+'</div>')
+              +(p[1]===null?'<div class="cv" style="color:var(--text3);">—</div>':'<div style="font-size:10px;letter-spacing:0;margin-top:1px;">'+starsHalf(p[1])+'</div>')
             +'</div>';
           }).join('')
         +'</div>'
@@ -735,10 +780,10 @@ function renderLeaderboard(){
         +'<div class="bwrap"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
       +'</div>'
       +'<div class="sc-cell hide-m" style="color:'+sc(r.score)+';">'+r.score+'</div>'
-      +'<div class="comp-cell">'+cv(r.spd)+'</div>'
-      +'<div class="comp-cell">'+cv(r.brk)+'</div>'
-      +'<div class="comp-cell hide-m">'+cv(r.acc)+'</div>'
-      +'<div class="comp-cell hide-m">'+cv(r.crn)+'</div>'
+      +'<div class="comp-cell"><span style="font-size:10px;letter-spacing:0;">'+(r.spd!==null?starsHalf(r.spd):'<span style="color:var(--text3)">—</span>')+'</span></div>'
+      +'<div class="comp-cell"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.brk)+'</span></div>'
+      +'<div class="comp-cell hide-m"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.acc)+'</span></div>'
+      +'<div class="comp-cell hide-m"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.crn)+'</span></div>'
       +'<div class="trend-cell">'+trendIcon(r.trend,13)+'</div>';
     listEl.appendChild(row);
   });
@@ -778,7 +823,7 @@ function renderDrivers(){
       +'<div class="dr-fields">'
         +'<div class="dr-row">'
           +'<div class="dr-field"><label>First name</label><input type="text" id="dr-first-'+pid+'" value="'+(d.first||'')+'" placeholder="First name"></div>'
-          +'<div class="dr-field"><label>Last initial</label><input type="text" id="dr-last-'+pid+'" value="'+(d.last||'')+'" placeholder="A" maxlength="1" style="text-transform:uppercase;"></div>'
+          +'<div class="dr-field"><label>Last name</label><input type="text" id="dr-last-'+pid+'" value="'+(d.last||'')+'" placeholder="Last name"></div>'
         +'</div>'
         +'<div class="dr-row">'
           +'<div class="dr-field"><label>Age bracket</label><select id="dr-age-'+pid+'"><option value="">&#8212; select &#8212;</option>'+ageOpts+'</select></div>'
@@ -822,27 +867,25 @@ function saveDr(plate){
   if(saved){ saved.classList.add('show'); clearTimeout(saved._t); saved._t=setTimeout(function(){ saved.classList.remove('show'); },1800); }
 }
 function filterDrivers(q){
-  q = (q||'').trim().toUpperCase();
-  var drData = loadDrivers();
-  var cards = document.querySelectorAll('#dr-grid .dr-card');
-  var active = document.querySelector('#dr-alpha .alpha-btn.alpha-active');
-  if(active && q === active.dataset.l) { /* already set */ }
-  // Sync alpha bar highlight
+  q=(q||'').trim().toUpperCase();
+  var drData=loadDrivers();
   document.querySelectorAll('#dr-alpha .alpha-btn').forEach(function(btn){
-    btn.classList.toggle('alpha-active', btn.dataset.l === q);
-    btn.style.background = btn.dataset.l === q ? 'var(--info-bg)' : '';
-    btn.style.color = btn.dataset.l === q ? 'var(--info)' : '';
-    btn.style.borderColor = btn.dataset.l === q ? 'var(--info)' : '';
+    var isAlpha=q.length===1&&btn.dataset.l===q;
+    btn.classList.toggle('alpha-active',isAlpha);
+    btn.style.background=isAlpha?'var(--info-bg)':'';
+    btn.style.color=isAlpha?'var(--info)':'';
+    btn.style.borderColor=isAlpha?'var(--info)':'';
   });
-  // Sync search input
-  var inp = document.getElementById('dr-search');
-  if(inp && inp.value.toUpperCase() !== q) inp.value = q;
-  cards.forEach(function(card){
-    var plate = card.querySelector('.dr-plate');
-    if(!plate) return;
-    var d = drData[plate.textContent] || {};
-    var initial = (d.last||'').trim().toUpperCase()[0] || '';
-    card.style.display = (!q || initial === q) ? '' : 'none';
+  var inp=document.getElementById('dr-search');
+  if(inp&&inp.value.toUpperCase()!==q)inp.value=q;
+  document.querySelectorAll('#dr-grid .dr-card').forEach(function(card){
+    var plate=card.querySelector('.dr-plate');
+    if(!plate)return;
+    var d=drData[plate.textContent]||{};
+    var first=(d.first||'').toUpperCase();
+    var last=(d.last||'').toUpperCase();
+    var pl=(plate.textContent||'').toUpperCase();
+    card.style.display=(!q||first.includes(q)||last.includes(q)||pl.includes(q)||(last[0]&&last[0]===q&&q.length===1))?'':'none';
   });
 }
 function buildAlphaBar(){
