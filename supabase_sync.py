@@ -246,8 +246,10 @@ def sync(scores_path):
     # ── latest_run (live dashboard snapshot) ──────────────────────────────
     weeks = _compute_weeks(d['vehicles'])
     date_range = _date_range(d['vehicles'])
+    now_iso = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     _rest('POST', 'latest_run', {
         'id': 1,
+        'updated_at': now_iso,
         'data': {
             'vehicles':     _enrich_vehicles(d['vehicles']),
             'incidents':    d.get('incidents', []),
