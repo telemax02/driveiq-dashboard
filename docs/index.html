@@ -59,10 +59,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:28px;padding:0 10px;}
 .podium-slot{flex:1;max-width:220px;text-align:center;}
 .podium-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 12px 12px;position:relative;}
-.podium-card.p1{border-color:rgba(239,159,39,0.4);box-shadow:0 0 20px rgba(239,159,39,0.08);}
-.podium-card.p2{border-color:rgba(192,192,192,0.25);}
-.podium-card.p3{border-color:rgba(176,120,76,0.25);}
+.podium-card.p1{border:1.5px solid rgba(239,159,39,0.75);border-top:3px solid #EF9F27;box-shadow:0 0 36px rgba(239,159,39,0.25),0 6px 24px rgba(0,0,0,0.5);background:linear-gradient(175deg,rgba(239,159,39,0.1) 0%,var(--bg2) 50%);}
+.podium-card.p2{border:1px solid rgba(192,192,192,0.5);border-top:2px solid rgba(192,192,192,0.75);box-shadow:0 0 22px rgba(192,192,192,0.15),0 4px 18px rgba(0,0,0,0.4);background:linear-gradient(175deg,rgba(192,192,192,0.07) 0%,var(--bg2) 50%);}
+.podium-card.p3{border:1px solid rgba(176,120,76,0.5);border-top:2px solid rgba(176,120,76,0.75);box-shadow:0 0 22px rgba(176,120,76,0.15),0 4px 18px rgba(0,0,0,0.4);background:linear-gradient(175deg,rgba(176,120,76,0.07) 0%,var(--bg2) 50%);}
 .podium-medal{font-size:28px;display:block;margin-bottom:6px;}
+.podium-card.p1 .podium-medal{font-size:36px;}
 .podium-plate{font-size:15px;font-weight:600;margin-bottom:2px;}
 .podium-make{font-size:11px;color:var(--text3);margin-bottom:10px;}
 .podium-score{font-size:36px;font-weight:500;}
@@ -740,12 +741,14 @@ function renderLeaderboard(){
   const top3=wk.rankings.slice(0,3);
   const medals=['🥇','🥈','🥉'];
   const pClass=['p1','p2','p3'];
+  const podiumTopPx=[0,28,48]; // 1st=flush, 2nd=28px lower, 3rd=48px lower
   const podiumOrder=top3.length>=2?[1,0,2]:[0];
   const podEl=document.getElementById('podium');podEl.innerHTML='';
   podiumOrder.forEach(function(idx){
     if(idx>=top3.length)return;
     const r=top3[idx];
     const slot=document.createElement('div');slot.className='podium-slot';
+    slot.style.marginTop=podiumTopPx[idx]+'px';
     slot.innerHTML=
       '<div class="podium-card '+pClass[idx]+'">'
         +'<span class="podium-trend">'+trendIcon(r.trend,14)+'</span>'
