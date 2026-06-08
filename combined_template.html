@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
 :root{--bg:#1e1e1c;--bg2:#2a2a27;--bg3:#333330;--text:#f0efeb;--text2:#b4b2a9;--text3:#6b6a64;--border:rgba(255,255,255,0.10);--success:#97c459;--success-bg:#27500a;--info:#85b7eb;--info-bg:#0c447c;--warning:#EF9F27;--warning-bg:#633806;--danger:#ef4444;--danger-bg:#791f1f;--gold:#EF9F27;--radius:8px;--radius-lg:12px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -427,9 +428,23 @@ function switchTab(tab){
   document.getElementById('tab-lb').classList.toggle('active',      tab==='lb');
   document.getElementById('tab-drivers').classList.toggle('active', tab==='drivers');
   document.getElementById('tab-faq').classList.toggle('active',     tab==='faq');
-  if(tab==='lb') renderLeaderboard();
+  if(tab==='lb'){ renderLeaderboard(); setTimeout(triggerPodiumConfetti,180); }
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
+}
+
+function triggerPodiumConfetti(){
+  if(typeof confetti==='undefined') return;
+  var card=document.querySelector('.podium-card.p1');
+  if(!card) return;
+  var rect=card.getBoundingClientRect();
+  var cx=(rect.left+rect.width/2)/window.innerWidth;
+  var cy=(rect.top+rect.height*0.3)/window.innerHeight;
+  var colors=['#EF9F27','#FFD700','#FFF4B8','#FFFFFF','#FFC107','#FFEC5C'];
+  confetti({particleCount:120,spread:80,origin:{x:cx,y:cy},colors:colors,startVelocity:42,decay:0.93,scalar:1.1,zIndex:9999});
+  setTimeout(function(){
+    confetti({particleCount:60,spread:55,origin:{x:cx,y:cy},colors:colors,startVelocity:28,decay:0.91,scalar:0.9,zIndex:9999});
+  },280);
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
