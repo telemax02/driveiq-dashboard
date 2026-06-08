@@ -9,6 +9,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
 :root{--bg:#1e1e1c;--bg2:#2a2a27;--bg3:#333330;--text:#f0efeb;--text2:#b4b2a9;--text3:#6b6a64;--border:rgba(255,255,255,0.10);--success:#97c459;--success-bg:#27500a;--info:#85b7eb;--info-bg:#0c447c;--warning:#EF9F27;--warning-bg:#633806;--danger:#ef4444;--danger-bg:#791f1f;--gold:#EF9F27;--radius:8px;--radius-lg:12px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -809,7 +810,8 @@ function renderLeaderboard(){
       +'<div>'
         +(drName(r.plate)?'<div style="font-size:12px;font-weight:600;">'+drName(r.plate)+ageTag(drAge(r.plate))+'</div>':'') 
         +'<div style="font-size:10px;color:var(--text3);">'+(drName(r.plate)?r.plate+' &middot; ':'')+r.make+' &middot; '+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'+(r.short||r.std||r.lng?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">'+(r.short?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--success-bg);color:var(--success);">'+r.short+' Short</span>':'')+(r.std?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);">'+r.std+' Standard</span>':'')+(r.lng?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--info-bg);color:var(--info);">'+r.lng+' Long</span>':'')+'</div>':'')
-        +'<div class="bwrap"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
+        +'<button class="tf-btn" style="margin-top:5px;font-size:9px;padding:2px 8px;" onclick="event.stopPropagation();showTrendModal(\''+r.plate+'\')">📈 7-day trend</button>'
+        +'<div class="bwrap" style="margin-top:4px;"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
       +'</div>'
       +'<div class="sc-cell hide-m" style="color:'+sc(r.score)+';">'+r.score+'</div>'
       +'<div class="comp-cell"><span style="font-size:10px;letter-spacing:0;">'+(r.spd!==null?starsHalf(r.spd):'<span style="color:var(--text3)">—</span>')+'</span></div>'
@@ -818,6 +820,94 @@ function renderLeaderboard(){
       +'<div class="comp-cell hide-m"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.crn)+'</span></div>'
       +'<div class="trend-cell">'+trendIcon(r.trend,13)+'</div>';
     listEl.appendChild(row);
+  });
+}
+
+// ── Trend chart modal ───────────────────────────────────────────────────────
+var _trendChart=null;
+
+function showTrendModal(plate){
+  closeTrendModal();
+  var v=vehicles.find(function(x){return x.plate===plate;});
+  if(!v) return;
+  var drData=loadDrivers(); var d=drData[plate]||{};
+  var name=((d.first||'').trim()+' '+(d.last||'').trim().toUpperCase()).trim()||plate;
+  var lineRgb=v.avg>=90?'34,197,94':v.avg>=70?'96,165,250':v.avg>=50?'245,158,11':'239,68,68';
+
+  var ov=document.createElement('div');
+  ov.id='trend-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  ov.onclick=function(e){if(e.target===ov)closeTrendModal();};
+
+  var box=document.createElement('div');
+  box.style.cssText='width:min(92vw,560px);background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:20px;position:relative;';
+  box.innerHTML=
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">'
+      +'<div>'
+        +'<div style="font-size:14px;font-weight:600;color:var(--text);">'+name+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+plate+' &middot; '+v.make+' &middot; Last 7 days</div>'
+      +'</div>'
+      +'<button onclick="closeTrendModal()" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;">&times;</button>'
+    +'</div>'
+    +'<div id="trend-chart-area" style="position:relative;height:220px;"><canvas id="trend-canvas"></canvas></div>';
+
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+  renderTrendChart(plate,lineRgb);
+}
+
+function closeTrendModal(){
+  if(_trendChart){_trendChart.destroy();_trendChart=null;}
+  var m=document.getElementById('trend-modal');
+  if(m) m.remove();
+}
+
+function renderTrendChart(plate,lineRgb){
+  var v=vehicles.find(function(x){return x.plate===plate;});
+  if(!v||!v.trips) return;
+  var cutoff=Date.now()/1000-7*86400;
+  var recent=v.trips.filter(function(t){return (t.begin_ts||0)>=cutoff;});
+
+  var byDate={},dateTs={};
+  recent.forEach(function(t){
+    var d=t.date||''; if(!d) return;
+    if(!byDate[d]){byDate[d]=[];dateTs[d]=t.begin_ts||0;}
+    byDate[d].push(t.total!==undefined?t.total:tot(t));
+  });
+  var dateOrder=Object.keys(byDate).sort(function(a,b){return dateTs[a]-dateTs[b];});
+  var labels=dateOrder;
+  var data=dateOrder.map(function(d){
+    var s=byDate[d]; return Math.round(s.reduce(function(a,b){return a+b;},0)/s.length);
+  });
+
+  var area=document.getElementById('trend-chart-area');
+  if(!labels.length){
+    area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">No trips in the last 7 days</div>';
+    return;
+  }
+  var canvas=document.getElementById('trend-canvas');
+  if(!canvas) return;
+  var minY=Math.max(0,Math.min.apply(null,data)-10);
+  var color='rgba('+lineRgb+',1)';
+  var fill='rgba('+lineRgb+',0.08)';
+  _trendChart=new Chart(canvas.getContext('2d'),{
+    type:'line',
+    data:{
+      labels:labels,
+      datasets:[{label:'Score',data:data,borderColor:color,backgroundColor:fill,pointBackgroundColor:color,pointBorderColor:color,pointRadius:5,pointHoverRadius:7,tension:0.35,fill:true,borderWidth:2}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      scales:{
+        y:{min:minY,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#888',font:{size:11},stepSize:10}},
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#888',font:{size:11}}}
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#1a1a17',titleColor:'#aaa',bodyColor:color,borderColor:'#333',borderWidth:1,padding:10,
+          callbacks:{label:function(ctx){return 'Score: '+ctx.parsed.y+'/100';}}}
+      }
+    }
   });
 }
 
