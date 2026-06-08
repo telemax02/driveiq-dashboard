@@ -118,8 +118,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .lb-row-p1{animation:pulse-p1 1.4s ease-in-out 3;}
 .lb-row-p2{animation:pulse-p2 1.4s ease-in-out 3;}
 .lb-row-p3{animation:pulse-p3 1.4s ease-in-out 3;}
-.chart-btn{background:none;border:0.5px solid var(--border);color:var(--text3);border-radius:6px;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,color .15s,border-color .15s;}
-.chart-btn:hover{background:var(--bg3);color:var(--info);border-color:var(--info);}
+.chart-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:6px;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,color .15s,border-color .15s;}
+.chart-btn:hover{background:var(--bg2);color:var(--info);border-color:var(--info);}
 </style>
 </head>
 <body>
@@ -881,6 +881,7 @@ function closeTrendModal(){
 
 function renderTrendChart(plate,lineRgb,days){
   days=days||7;
+  if(_trendChart){_trendChart.destroy();_trendChart=null;}
   var v=vehicles.find(function(x){return x.plate===plate;});
   if(!v||!v.trips) return;
   var cutoff=Date.now()/1000-days*86400;
@@ -899,17 +900,13 @@ function renderTrendChart(plate,lineRgb,days){
   });
 
   var area=document.getElementById('trend-chart-area');
+  if(!area) return;
+  area.innerHTML='<canvas id="trend-canvas"></canvas>';
   if(!labels.length){
-    if(_trendChart){_trendChart.destroy();_trendChart=null;}
     area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">No trips in the last '+days+' days</div>';
     return;
   }
-  if(!document.getElementById('trend-canvas')){
-    area.innerHTML='<canvas id="trend-canvas"></canvas>';
-  }
   var canvas=document.getElementById('trend-canvas');
-  if(!canvas) return;
-  if(_trendChart){_trendChart.destroy();_trendChart=null;}
   var minY=Math.max(0,Math.min.apply(null,data)-10);
   var color='rgba('+lineRgb+',1)';
   var fill='rgba('+lineRgb+',0.08)';
