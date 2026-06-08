@@ -756,7 +756,7 @@ function renderLeaderboard(){
         +'<div style="font-size:10px;color:'+GOLD+';margin-top:2px;">'+stars(r.score)+'</div>'
         +'<div class="podium-trips">'+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'
         +'<div class="podium-comps">'
-          +[['Spd',r.spd],['Brk',r.brk],['Acc',r.acc],['Crn',r.crn]].map(function(p){
+          +[['Speeding',r.spd],['Braking',r.brk],['Accel',r.acc],['Cornering',r.crn]].map(function(p){
             return'<div class="podium-comp"><div class="ck">'+p[0]+'</div>'
               +(p[1]===null?'<div class="cv" style="color:var(--text3);">—</div>':'<div style="font-size:10px;letter-spacing:0;margin-top:1px;">'+starsHalf(p[1])+'</div>')
             +'</div>';
