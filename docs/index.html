@@ -476,6 +476,18 @@ function renderLeaderboard(){
   var drData=loadDrivers();
   function drName(plate){ var d=drData[plate]||{}; var f=(d.first||'').trim(),l=(d.last||'').trim().toUpperCase(); return f||l?(f+(l?(' '+l+'.'):'')):''; }
   function drAge(plate){ return (drData[plate]||{}).age||''; }
+  function ageTag(a){
+    var m={
+      'Under 25':['#c084fc','rgba(139,92,246,0.18)'],
+      '25–34':['var(--info)','var(--info-bg)'],
+      '35–44':['#5eead4','rgba(20,184,166,0.15)'],
+      '45–54':['var(--warning)','var(--warning-bg)'],
+      '55–64':['var(--success)','var(--success-bg)'],
+      '65+':['#f87171','var(--danger-bg)']
+    };
+    var c=m[a];
+    return a&&c?'<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:'+c[1]+';color:'+c[0]+';margin-left:5px;">'+a+'</span>':'';
+  }
   const wk=weeksData[lbIdx];
   document.getElementById('week-label').textContent=wk.label;
   document.getElementById('btn-prev').disabled=lbIdx===0;
@@ -519,7 +531,7 @@ function renderLeaderboard(){
     row.innerHTML=
       '<div class="rk'+(medal?' medal':'')+'">'+( medal||'#'+r.rank)+'</div>'
       +'<div>'
-        +(drName(r.plate)?'<div style="font-size:12px;font-weight:600;">'+drName(r.plate)+(drAge(r.plate)?'<span style="font-size:9px;font-weight:400;color:var(--text3);margin-left:5px;">'+drAge(r.plate)+'</span>':'')+'</div>':'') 
+        +(drName(r.plate)?'<div style="font-size:12px;font-weight:600;">'+drName(r.plate)+ageTag(drAge(r.plate))+'</div>':'') 
         +'<div style="font-size:10px;color:var(--text3);">'+(drName(r.plate)?r.plate+' &middot; ':'')+r.make+' &middot; '+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'+(r.short||r.std||r.lng?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">'+(r.short?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--success-bg);color:var(--success);">'+r.short+' Short</span>':'')+(r.std?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);">'+r.std+' Standard</span>':'')+(r.lng?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--info-bg);color:var(--info);">'+r.lng+' Long</span>':'')+'</div>':'')
         +'<div class="bwrap"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
       +'</div>'
