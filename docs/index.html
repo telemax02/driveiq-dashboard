@@ -825,15 +825,17 @@ function renderLeaderboard(){
 }
 
 // ── Trend chart modal ───────────────────────────────────────────────────────
-var _trendChart=null;
+var _trendChart=null, _trendPlate=null, _trendRgb=null, _trendDays=7;
 
 function showTrendModal(plate){
   closeTrendModal();
+  _trendDays=7;
   var v=vehicles.find(function(x){return x.plate===plate;});
   if(!v) return;
+  _trendPlate=plate;
+  _trendRgb=v.avg>=90?'34,197,94':v.avg>=70?'96,165,250':v.avg>=50?'245,158,11':'239,68,68';
   var drData=loadDrivers(); var d=drData[plate]||{};
   var name=((d.first||'').trim()+' '+(d.last||'').trim().toUpperCase()).trim()||plate;
-  var lineRgb=v.avg>=90?'34,197,94':v.avg>=70?'96,165,250':v.avg>=50?'245,158,11':'239,68,68';
 
   var ov=document.createElement('div');
   ov.id='trend-modal';
@@ -843,30 +845,45 @@ function showTrendModal(plate){
   var box=document.createElement('div');
   box.style.cssText='width:min(92vw,560px);background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:20px;position:relative;';
   box.innerHTML=
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">'
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">'
       +'<div>'
         +'<div style="font-size:14px;font-weight:600;color:var(--text);">'+name+'</div>'
-        +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+plate+' &middot; '+v.make+' &middot; Last 7 days</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+plate+' &middot; '+v.make+'</div>'
       +'</div>'
       +'<button onclick="closeTrendModal()" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;">&times;</button>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:14px;">'
+      +'<button class="tf-btn tf-active" data-td="7"  onclick="setTrendDays(7)">7 days</button>'
+      +'<button class="tf-btn"           data-td="30" onclick="setTrendDays(30)">30 days</button>'
+      +'<button class="tf-btn"           data-td="90" onclick="setTrendDays(90)">90 days</button>'
     +'</div>'
     +'<div id="trend-chart-area" style="position:relative;height:220px;"><canvas id="trend-canvas"></canvas></div>';
 
   ov.appendChild(box);
   document.body.appendChild(ov);
-  renderTrendChart(plate,lineRgb);
+  renderTrendChart(plate,_trendRgb,7);
+}
+
+function setTrendDays(days){
+  _trendDays=days;
+  document.querySelectorAll('[data-td]').forEach(function(b){
+    b.classList.toggle('tf-active',Number(b.dataset.td)===days);
+  });
+  if(_trendPlate) renderTrendChart(_trendPlate,_trendRgb,days);
 }
 
 function closeTrendModal(){
   if(_trendChart){_trendChart.destroy();_trendChart=null;}
+  _trendPlate=null;
   var m=document.getElementById('trend-modal');
   if(m) m.remove();
 }
 
-function renderTrendChart(plate,lineRgb){
+function renderTrendChart(plate,lineRgb,days){
+  days=days||7;
   var v=vehicles.find(function(x){return x.plate===plate;});
   if(!v||!v.trips) return;
-  var cutoff=Date.now()/1000-7*86400;
+  var cutoff=Date.now()/1000-days*86400;
   var recent=v.trips.filter(function(t){return (t.begin_ts||0)>=cutoff;});
 
   var byDate={},dateTs={};
@@ -883,11 +900,16 @@ function renderTrendChart(plate,lineRgb){
 
   var area=document.getElementById('trend-chart-area');
   if(!labels.length){
-    area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">No trips in the last 7 days</div>';
+    if(_trendChart){_trendChart.destroy();_trendChart=null;}
+    area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">No trips in the last '+days+' days</div>';
     return;
+  }
+  if(!document.getElementById('trend-canvas')){
+    area.innerHTML='<canvas id="trend-canvas"></canvas>';
   }
   var canvas=document.getElementById('trend-canvas');
   if(!canvas) return;
+  if(_trendChart){_trendChart.destroy();_trendChart=null;}
   var minY=Math.max(0,Math.min.apply(null,data)-10);
   var color='rgba('+lineRgb+',1)';
   var fill='rgba('+lineRgb+',0.08)';
