@@ -433,13 +433,20 @@ function switchTab(tab){
   if(tab==='dash') renderRanking();
 }
 
-function triggerPodiumConfetti(){
+function triggerPodiumConfetti(attempt){
   if(typeof confetti==='undefined') return;
   var card=document.querySelector('.podium-card.p1');
-  if(!card) return;
+  if(!card){
+    if((attempt||0)<5) setTimeout(function(){ triggerPodiumConfetti((attempt||0)+1); },120);
+    return;
+  }
   var rect=card.getBoundingClientRect();
-  var cx=(rect.left+rect.width/2)/window.innerWidth;
-  var cy=(rect.top+rect.height*0.3)/window.innerHeight;
+  if(rect.width===0){
+    if((attempt||0)<5) setTimeout(function(){ triggerPodiumConfetti((attempt||0)+1); },120);
+    return;
+  }
+  var cx=Math.max(0.1,Math.min(0.9,(rect.left+rect.width/2)/window.innerWidth));
+  var cy=Math.max(0.05,Math.min(0.9,(rect.top+rect.height*0.3)/window.innerHeight));
   var colors=['#EF9F27','#FFD700','#FFF4B8','#FFFFFF','#FFC107','#FFEC5C'];
   confetti({particleCount:120,spread:80,origin:{x:cx,y:cy},colors:colors,startVelocity:42,decay:0.93,scalar:1.1,zIndex:9999});
   setTimeout(function(){
@@ -730,7 +737,7 @@ let lbIdx=0; // recalculated by loadDashboardData()
 function changeWeek(dir){
   lbIdx=Math.max(0,Math.min(weeksData.length-1,lbIdx+dir));
   renderLeaderboard();
-  setTimeout(triggerPodiumConfetti,180);
+  setTimeout(triggerPodiumConfetti,50);
 }
 
 function renderLeaderboard(){
