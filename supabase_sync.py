@@ -98,16 +98,61 @@ def _compute_weeks(vehicles):
     return out
 
 
-def _flatten_vehicles(vehicles):
-    """Flatten comp_avgs into spd_avg/brk_avg/acc_avg/crn_avg so the template JS can access them directly."""
+def _enrich_vehicles(vehicles):
+    """Compute rank, comp_avgs, trend and flatten for template JS.
+    score_v2.py sorts vehicles but doesn't add these fields."""
+    sorted_vehs = sorted(vehicles, key=lambda v: v['avg'], reverse=True)
+
+    # Compute per-vehicle weekly scores to derive trend
+    week_scores = {}  # plate -> {wk_ts -> score}
+    for v in sorted_vehs:
+        ws = {}
+        for t in v.get('trips', []):
+            wk = _week_mon_ts(t.get('begin_ts', 0))
+            ws.setdefault(wk, []).append(t)
+        plate_wks = {}
+        for wk, trps in ws.items():
+            km = sum(t['km'] for t in trps) or 1
+            plate_wks[wk] = round(sum(t['raw'] * t['km'] for t in trps) / km)
+        week_scores[v['plate']] = plate_wks
+
+    all_wks = sorted({wk for pw in week_scores.values() for wk in pw})
+
     out = []
-    for v in vehicles:
-        ca = v.get('comp_avgs') or {}
+    for i, v in enumerate(sorted_vehs):
         vv = dict(v)
-        vv['spd_avg'] = ca.get('spd')
-        vv['brk_avg'] = ca.get('brk', 0)
-        vv['acc_avg'] = ca.get('acc', 0)
-        vv['crn_avg'] = ca.get('crn', 0)
+        vv['rank'] = i + 1
+
+        # comp_avgs from trips
+        trips = v.get('trips', [])
+        km_total = sum(t.get('km', 0) for t in trips) or 1
+        spd_trips = [t for t in trips if t.get('spd') is not None]
+        spd_km = sum(t.get('km', 0) for t in spd_trips) or 1
+        ca = {
+            'spd': round(sum(t['spd'] * t['km'] for t in spd_trips) / spd_km) if spd_trips else None,
+            'brk': round(sum(t.get('brk', 0) * t.get('km', 0) for t in trips) / km_total),
+            'acc': round(sum(t.get('acc', 0) * t.get('km', 0) for t in trips) / km_total),
+            'crn': round(sum(t.get('crn', 0) * t.get('km', 0) for t in trips) / km_total),
+        }
+        vv['comp_avgs'] = ca
+        vv['spd_avg'] = ca['spd']
+        vv['brk_avg'] = ca['brk']
+        vv['acc_avg'] = ca['acc']
+        vv['crn_avg'] = ca['crn']
+
+        # trend: compare last two weeks
+        pw = week_scores.get(v['plate'], {})
+        if len(all_wks) >= 2 and len(pw) >= 2:
+            cur = pw.get(all_wks[-1])
+            prev = pw.get(all_wks[-2])
+            if cur is not None and prev is not None:
+                delta = cur - prev
+                vv['trend'] = 'improving' if delta >= 3 else ('declining' if delta <= -3 else 'stable')
+            else:
+                vv.setdefault('trend', None)
+        else:
+            vv.setdefault('trend', None)
+
         out.append(vv)
     return out
 
@@ -204,7 +249,7 @@ def sync(scores_path):
     _rest('POST', 'latest_run', {
         'id': 1,
         'data': {
-            'vehicles':     _flatten_vehicles(d['vehicles']),
+            'vehicles':     _enrich_vehicles(d['vehicles']),
             'incidents':    d.get('incidents', []),
             'weeks':        weeks,
             'fleet_avg':    d['fleet_avg'],
