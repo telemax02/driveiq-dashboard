@@ -2,7 +2,7 @@ name: DriveIQ Pipeline
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # every 15 minutes
+    - cron: '0 */4 * * *'   # every 4 hours
   workflow_dispatch:        # also allow manual trigger from GitHub UI
 
 jobs:
