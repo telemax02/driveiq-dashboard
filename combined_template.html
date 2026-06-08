@@ -80,17 +80,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .week-nav button:hover{background:var(--bg3);}
 .week-nav button:disabled{opacity:0.3;cursor:default;}
 #week-label{font-size:13px;font-weight:500;color:var(--text2);}
-.lb-list-header{display:grid;grid-template-columns:36px 1fr 60px 72px 64px 90px 72px 36px;gap:6px;align-items:center;padding:6px 10px;margin-bottom:4px;}
+.lb-list-header{display:grid;grid-template-columns:36px 1fr 60px 72px 64px 90px 72px 66px;gap:6px;align-items:center;padding:6px 10px;margin-bottom:4px;}
 .lb-list-header span{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
 .lb-list-header span.right{text-align:right;}
-.lb-row{display:grid;grid-template-columns:36px 1fr 60px 72px 64px 90px 72px 36px;gap:6px;align-items:center;padding:9px 10px;border-radius:var(--radius);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:5px;transition:background .15s;}
+.lb-row{display:grid;grid-template-columns:36px 1fr 60px 72px 64px 90px 72px 66px;gap:6px;align-items:center;padding:9px 10px;border-radius:var(--radius);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:5px;transition:background .15s;}
 .lb-row:hover{background:var(--bg3);}
 .lb-row.top{border-color:rgba(239,159,39,0.3);}
 .rk{font-size:13px;font-weight:500;color:var(--text3);text-align:center;}
 .rk.medal{font-size:16px;}
 .sc-cell{font-size:18px;font-weight:500;text-align:right;}
 .comp-cell{font-size:12px;font-weight:500;text-align:right;}
-.trend-cell{display:flex;align-items:center;justify-content:center;}
+.trend-cell{display:flex;align-items:center;justify-content:center;gap:4px;}
 @media(max-width:700px){.main{grid-template-columns:1fr;}.stats{grid-template-columns:1fr;}.lb-list-header,.lb-row{grid-template-columns:30px 1fr 52px 64px 60px 28px;}.hide-m{display:none;}}
 /* ── Drivers ── */
 .dr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
@@ -818,7 +818,10 @@ function renderLeaderboard(){
       +'<div class="comp-cell"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.brk)+'</span></div>'
       +'<div class="comp-cell hide-m"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.acc)+'</span></div>'
       +'<div class="comp-cell hide-m"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.crn)+'</span></div>'
-      +'<div class="trend-cell"><button class="chart-btn" onclick="event.stopPropagation();showTrendModal(\''+r.plate+'\')" title="7-day score trend"><i class="ti ti-chart-line" style="font-size:13px;"></i></button></div>';
+      +'<div class="trend-cell">'
+        +'<button class="chart-btn" onclick="event.stopPropagation();showTrendModal(\''+r.plate+'\')" title="Score trend chart"><i class="ti ti-chart-line" style="font-size:13px;"></i></button>'
+        +'<button class="chart-btn" onclick="event.stopPropagation();showSummaryModal(\''+r.plate+'\')" title="Weekly summary"><i class="ti ti-align-left" style="font-size:13px;"></i></button>'
+      +'</div>';
     listEl.appendChild(row);
   });
 }
@@ -876,6 +879,108 @@ function closeTrendModal(){
   _trendPlate=null;
   var m=document.getElementById('trend-modal');
   if(m) m.remove();
+}
+
+// ── Weekly summary modal ────────────────────────────────────────────────────
+function generateWeeklySummary(r){
+  var drData=loadDrivers(); var d=drData[r.plate]||{};
+  var firstName=((d.first||'').trim())||'This driver';
+
+  var comps=[
+    {name:'speeding',label:'Speeding',val:r.spd},
+    {name:'braking',label:'Braking',val:r.brk},
+    {name:'acceleration',label:'Acceleration',val:r.acc},
+    {name:'cornering',label:'Cornering',val:r.crn}
+  ].filter(function(c){return c.val!==null&&c.val!==undefined;});
+  comps.sort(function(a,b){return b.val-a.val;});
+  var best=comps[0], worst=comps[comps.length-1];
+
+  var sentences=[];
+
+  // Sentence 1 — overall score + standout strength
+  var intro='';
+  if(r.score>=92) intro=firstName+' had an outstanding week, scoring '+r.score+' across '+r.trips+' trip'+(r.trips!==1?'s':'')+'.';
+  else if(r.score>=80) intro=firstName+' had a strong week with a score of '+r.score+' across '+r.trips+' trip'+(r.trips!==1?'s':'')+'.';
+  else if(r.score>=65) intro=firstName+' completed '+r.trips+' trip'+(r.trips!==1?'s':'')+' this week, scoring '+r.score+'.';
+  else intro=firstName+' scored '+r.score+' this week across '+r.trips+' trip'+(r.trips!==1?'s':'')+' — there is solid room to improve.';
+  if(best&&best.val>=85) intro+=' '+best.label+' is a real strength this week at '+best.val+'/100, showing great control in that area.';
+  sentences.push(intro);
+
+  // Sentence 2 — what is pulling the score down
+  var improve='';
+  if(worst&&worst.val<75){
+    var tips={speeding:'staying within speed limits more consistently will have the biggest impact',braking:'allowing more following distance to reduce sharp braking moments',acceleration:'smoother, gradual acceleration from stops and when overtaking',cornering:'easing off slightly before corners and bends'};
+    improve=worst.label+' is the main area bringing the score down at '+worst.val+'/100 — focusing on '+tips[worst.name]+' would make the most difference.';
+  } else if(worst&&worst.val<88){
+    improve='All components are performing well, though there is still some room to sharpen '+worst.label.toLowerCase()+' ('+worst.val+'/100) — small, consistent improvements there will push the overall score higher.';
+  } else {
+    improve='Every component is firing well this week — the key now is carrying this consistency into every trip, including the shorter ones.';
+  }
+  sentences.push(improve);
+
+  // Sentence 3 — trend + encouragement
+  var encourage='';
+  if(r.trend==='improving') encourage='The improving trend shows real progress — keep building on this momentum and the results will speak for themselves. Every safe trip counts.';
+  else if(r.trend==='declining') encourage='Scores have dipped a little this week, but every trip is a fresh start. A few focused drives can quickly turn things around — the potential is clearly there.';
+  else encourage='Consistency is one of the most valuable traits in a safe driver, and maintaining this standard is something to be proud of. Keep it up and the score will follow.';
+  sentences.push(encourage);
+
+  return sentences;
+}
+
+function showSummaryModal(plate){
+  var existing=document.getElementById('summary-modal');
+  if(existing) existing.remove();
+
+  var wk=weeksData[lbIdx];
+  if(!wk) return;
+  var r=wk.rankings.find(function(x){return x.plate===plate;});
+  if(!r) return;
+
+  var drData=loadDrivers(); var d=drData[plate]||{};
+  var name=((d.first||'').trim()+' '+(d.last||'').trim().toUpperCase()).trim()||plate;
+  var v=vehicles.find(function(x){return x.plate===plate;});
+  var lineRgb=r.score>=90?'34,197,94':r.score>=70?'96,165,250':r.score>=50?'245,158,11':'239,68,68';
+  var sentences=generateWeeklySummary(r);
+
+  var ov=document.createElement('div');
+  ov.id='summary-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+
+  var box=document.createElement('div');
+  box.style.cssText='width:min(92vw,540px);background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:20px;';
+
+  var comps=[['Speeding',r.spd],['Braking',r.brk],['Acceleration',r.acc],['Cornering',r.crn]];
+  var compsHtml=comps.map(function(c){
+    return'<div style="display:flex;align-items:center;gap:6px;">'
+      +'<span style="font-size:9px;color:var(--text3);min-width:76px;text-transform:uppercase;letter-spacing:.05em;">'+c[0]+'</span>'
+      +(c[1]!==null&&c[1]!==undefined?'<span style="font-size:10px;letter-spacing:0;">'+starsHalf(c[1])+'</span><span style="font-size:10px;color:var(--text3);">'+c[1]+'</span>':'<span style="color:var(--text3);font-size:10px;">—</span>')
+    +'</div>';
+  }).join('');
+
+  box.innerHTML=
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;">'
+      +'<div>'
+        +'<div style="font-size:14px;font-weight:600;color:var(--text);">'+name+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+plate+(v?' &middot; '+v.make:'')+' &middot; '+wk.label+'</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">'
+        +'<div style="text-align:right;">'
+          +'<div style="font-size:22px;font-weight:600;color:rgba('+lineRgb+',1);">'+r.score+'</div>'
+          +'<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Week score</div>'
+        +'</div>'
+        +'<button onclick="document.getElementById(\'summary-modal\').remove()" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:18px;line-height:1;">&times;</button>'
+      +'</div>'
+    +'</div>'
+    +'<div style="background:var(--bg3);border-radius:8px;padding:12px 14px;margin-bottom:14px;">'
+      +sentences.map(function(s){return'<p style="font-size:12px;line-height:1.65;color:var(--text2);margin:0 0 8px 0;">'+s+'</p>';}).join('')
+      .replace(/<p([^>]*)>([^<]*)<\/p>(\s*)$/,'<p$1 style="font-size:12px;line-height:1.65;color:var(--text2);margin:0;">$2</p>')
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">'+compsHtml+'</div>';
+
+  ov.appendChild(box);
+  document.body.appendChild(ov);
 }
 
 function renderTrendChart(plate,lineRgb,days){
