@@ -63,7 +63,7 @@ for v in d['vehicles']:
 print('Step 4: Calculating scores, trends, summaries...')
 for v in d['vehicles']:
     trips = v['trips']; km_total = sum(t['km'] for t in trips) or 1
-    v['avg'] = round(sum(t['raw']*t['km'] for t in trips)/km_total)
+    v['avg'] = round(sum(t.get('total', t['raw'])*t['km'] for t in trips)/km_total)
     spd_t = [t for t in trips if t['spd'] is not None]
     spd_avg = round(sum(t['spd']*t['km'] for t in spd_t)/sum(t['km'] for t in spd_t)) if spd_t else None
     v['comp_avgs'] = {'spd':spd_avg,

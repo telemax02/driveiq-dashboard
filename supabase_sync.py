@@ -72,14 +72,14 @@ def _compute_weeks(vehicles):
         rankings = []
         for plate, trps in veh_week.items():
             km = sum(t['km'] for t in trps) or 1
-            sc = round(sum(t['raw'] * t['km'] for t in trps) / km)
+            sc = round(sum(t.get('total', t.get('raw', 0)) * t['km'] for t in trps) / km)
             spd_t = [t for t in trps if t.get('spd') is not None]
             spd = round(sum(t['spd'] * t['km'] for t in spd_t) / sum(t['km'] for t in spd_t)) if spd_t else None
             prev_trps = prev_veh.get(plate, [])
             prev_sc = None
             if prev_trps:
                 pkm = sum(t['km'] for t in prev_trps) or 1
-                prev_sc = round(sum(t['raw'] * t['km'] for t in prev_trps) / pkm)
+                prev_sc = round(sum(t.get('total', t.get('raw', 0)) * t['km'] for t in prev_trps) / pkm)
             trend = None
             if prev_sc is not None:
                 delta = sc - prev_sc
@@ -116,7 +116,7 @@ def _enrich_vehicles(vehicles):
         plate_wks = {}
         for wk, trps in ws.items():
             km = sum(t['km'] for t in trps) or 1
-            plate_wks[wk] = round(sum(t['raw'] * t['km'] for t in trps) / km)
+            plate_wks[wk] = round(sum(t.get('total', t.get('raw', 0)) * t['km'] for t in trps) / km)
         week_scores[v['plate']] = plate_wks
 
     all_wks = sorted({wk for pw in week_scores.values() for wk in pw})

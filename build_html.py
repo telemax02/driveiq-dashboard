@@ -40,7 +40,7 @@ for v in d['vehicles']:
 for key in set(new_coords):
     lat, lon = key.split(',')
     cache[key] = _rev(float(lat), float(lon))
-    print(f'  Geocoded {key} → {cache[key]}')
+    print(f'  Geocoded {key} -> {cache[key]}')
 
 if new_coords:
     json.dump(cache, open(GEO,'w'))
@@ -142,7 +142,7 @@ for v in d['vehicles']:
 def score_trips(trips):
     if not trips: return None
     km = sum(t['km'] for t in trips) or 1
-    return round(sum(t['raw']*t['km'] for t in trips)/km)
+    return round(sum(t.get('total', t['raw'])*t['km'] for t in trips)/km)
 
 def comp_avgs_trips(trips):
     km = sum(t['km'] for t in trips) or 1

@@ -59,7 +59,7 @@ for did,(pl,ints) in raw_intervals.items():
     trips=[t for t in trips if t is not None]
     if not trips: continue
     km_total=sum(t['km'] for t in trips)
-    avg=round(sum(t['raw']*t['km'] for t in trips)/km_total) if km_total>0 else 0
+    avg=round(sum(t['total']*t['km'] for t in trips)/km_total) if km_total>0 else 0
     cov_trips=[t for t in trips if t['cov_pct']>0]
     avg_cov=round(sum(t['cov_pct'] for t in cov_trips)/len(cov_trips)) if cov_trips else 0
     low_cov=avg_cov<60 and len(cov_trips)>0
@@ -80,4 +80,4 @@ _out_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'scores_
 with open(_out_path,'w') as f: json.dump(out,f)
 print(f'{len(veh)} vehicles, {out["total_trips"]} trips, {len(inc)} incidents, avg {fa}')
 for v in veh:
-    print(f'  {v["plate"]:10} {v["avg"]:3} {"🚨" if v["inc"] else "  "} {len(v["trips"])}t  cov:{v["avg_cov"]}%{"⚠" if v["low_cov"] else ""}')
+    print(f'  {v["plate"]:10} {v["avg"]:3} {"INC" if v["inc"] else "   "} {len(v["trips"])}t  cov:{v["avg_cov"]}%{"LOW" if v["low_cov"] else ""}')
