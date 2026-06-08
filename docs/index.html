@@ -587,7 +587,7 @@ function initLeafletMap(mapDiv){
   const slat=+mapDiv.dataset.slat,slon=+mapDiv.dataset.slon;
   const elat=+mapDiv.dataset.elat,elon=+mapDiv.dataset.elon;
   const map=L.map(mapDiv,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
   const sIcon=L.divIcon({html:'<div style="background:#22c55e;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
   const eIcon=L.divIcon({html:'<div style="background:#ef4444;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
   L.marker([slat,slon],{icon:sIcon}).addTo(map);
