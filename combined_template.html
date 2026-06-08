@@ -111,6 +111,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .tf-btn{font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;border:0.5px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;transition:background .15s,color .15s;}
 .tf-btn:hover{background:var(--bg2);color:var(--text2);}
 .tf-btn.tf-active{background:var(--info-bg);color:var(--info);border-color:var(--info);}
+@keyframes winner-pulse{0%{box-shadow:0 0 0 0 rgba(239,159,39,0),0 0 0 rgba(239,159,39,0);}50%{box-shadow:0 0 0 6px rgba(239,159,39,0.35),0 0 22px rgba(239,159,39,0.2);}100%{box-shadow:0 0 0 0 rgba(239,159,39,0),0 0 0 rgba(239,159,39,0);}}
+.lb-row-winner{animation:winner-pulse 1s ease-in-out 3;}
 </style>
 </head>
 <body>
@@ -796,7 +798,7 @@ function renderLeaderboard(){
   if(!wk.rankings.length){listEl.innerHTML='<div class="empty">No scored trips for this week.</div>';return;}
   wk.rankings.forEach(function(r){
     const row=document.createElement('div');
-    row.className='lb-row'+(r.rank<=3?' top':'');
+    row.className='lb-row'+(r.rank<=3?' top':'')+(r.rank===1?' lb-row-winner':'');
     const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':'';
     row.innerHTML=
       '<div class="rk'+(medal?' medal':'')+'">'+( medal||'#'+r.rank)+'</div>'
