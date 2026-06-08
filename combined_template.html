@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DriveIQ — Intelligent Driving Analytics</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#1e1e1c;--bg2:#2a2a27;--bg3:#333330;--text:#f0efeb;--text2:#b4b2a9;--text3:#6b6a64;--border:rgba(255,255,255,0.10);--success:#97c459;--success-bg:#27500a;--info:#85b7eb;--info-bg:#0c447c;--warning:#EF9F27;--warning-bg:#633806;--danger:#ef4444;--danger-bg:#791f1f;--gold:#EF9F27;--radius:8px;--radius-lg:12px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
+.page{max-width:1100px;margin:0 auto;padding:24px 20px;}
+/* ── Header & Tabs ── */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;}
+.header h1{font-size:20px;font-weight:500;white-space:nowrap;}
+.tabs{display:flex;background:var(--bg2);border-radius:8px;padding:3px;gap:2px;border:0.5px solid var(--border);}
+.tab{background:transparent;border:none;color:var(--text3);font-size:12px;font-weight:500;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.tab:hover{color:var(--text2);}
+.tab.active{background:var(--bg3);color:var(--text);border:0.5px solid var(--border);}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--border);color:var(--text2);white-space:nowrap;}
+/* ── Dashboard ── */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.stat{background:var(--bg2);border-radius:var(--radius);padding:14px;}
+.stat .lbl{font-size:11px;color:var(--text2);} .stat .val{font-size:26px;font-weight:500;margin-top:5px;} .stat .sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.main{display:grid;grid-template-columns:260px 1fr;gap:18px;margin-bottom:20px;}
+.slabel{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.rank-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--radius);cursor:pointer;border:0.5px solid transparent;transition:background .15s;}
+.rank-row:hover{background:var(--bg2);} .rank-row.active{background:var(--bg2);border-color:var(--border);}
+.bwrap{flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;} .bfill{height:100%;border-radius:2px;}
+.trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;}
+.comps{display:flex;gap:6px;} .comp{text-align:center;flex:1;}
+.comp .ck{font-size:10px;color:var(--text3);} .comp .cv{font-size:13px;font-weight:500;margin-top:2px;} .comp .cs{font-size:9px;color:var(--gold);margin-top:1px;}
+.tag{font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;}
+.td{background:var(--danger-bg);color:var(--danger);} .tw{background:var(--warning-bg);color:var(--warning);}
+.ts{background:var(--success-bg);color:var(--success);} .tl{background:var(--info-bg);color:var(--info);}
+.incidents{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px;}
+.inc{background:var(--bg2);border:0.5px solid var(--danger);border-radius:var(--radius-lg);padding:12px;display:flex;gap:10px;align-items:flex-start;}
+.inc-info{flex:1;min-width:0;}
+.inc-map{width:110px;height:110px;border-radius:6px;overflow:hidden;flex-shrink:0;}
+.inc .mx{font-size:20px;font-weight:500;color:var(--danger);margin:4px 0 3px;}
+.inc p{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5;}
+.empty{color:var(--text3);font-size:13px;padding:24px;text-align:center;}
+[data-tip]{position:relative;cursor:default;}
+[data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%) translateY(-3px);background:#1a1a18;color:#f0efeb;font-size:11px;padding:5px 10px;border-radius:7px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;border:0.5px solid rgba(255,255,255,0.15);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:999;}
+[data-tip]:hover::after{opacity:1;transform:translateX(-50%) translateY(0);}
+@keyframes pulse-ring{0%{transform:scale(0.6);opacity:0.8;}100%{transform:scale(2.2);opacity:0;}}
+.pulse-marker{position:relative;width:14px;height:14px;}
+.pulse-marker .dot{position:absolute;inset:0;background:#f09595;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.7);}
+.pulse-marker .ring{position:absolute;inset:-4px;background:#f09595;border-radius:50%;opacity:0.6;animation:pulse-ring 1.4s ease-out infinite;}
+#trips::-webkit-scrollbar{width:4px;}
+#trips::-webkit-scrollbar-track{background:transparent;}
+#trips::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px;}
+#trips::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+.trip-map-sq{width:128px;height:128px;border-radius:8px;overflow:hidden;border:0.5px solid var(--border);flex-shrink:0;}
+/* ── Leaderboard ── */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:28px;padding:0 10px;}
+.podium-slot{flex:1;max-width:220px;text-align:center;}
+.podium-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 12px 12px;position:relative;}
+.podium-card.p1{border-color:rgba(239,159,39,0.4);box-shadow:0 0 20px rgba(239,159,39,0.08);}
+.podium-card.p2{border-color:rgba(192,192,192,0.25);}
+.podium-card.p3{border-color:rgba(176,120,76,0.25);}
+.podium-medal{font-size:28px;display:block;margin-bottom:6px;}
+.podium-plate{font-size:15px;font-weight:600;margin-bottom:2px;}
+.podium-make{font-size:11px;color:var(--text3);margin-bottom:10px;}
+.podium-score{font-size:36px;font-weight:500;}
+.podium-trips{font-size:10px;color:var(--text3);margin-top:3px;}
+.podium-comps{display:flex;gap:4px;margin-top:10px;justify-content:center;}
+.podium-comp{flex:1;background:var(--bg3);border-radius:5px;padding:4px 2px;text-align:center;}
+.podium-comp .ck{font-size:8px;color:var(--text3);}
+.podium-comp .cv{font-size:11px;font-weight:600;margin-top:1px;}
+.podium-trend{position:absolute;top:10px;right:10px;font-size:14px;}
+.week-nav{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
+.week-nav button{background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.week-nav button:hover{background:var(--bg3);}
+.week-nav button:disabled{opacity:0.3;cursor:default;}
+#week-label{font-size:13px;font-weight:500;color:var(--text2);}
+.lb-list-header{display:grid;grid-template-columns:36px 1fr 60px 44px 44px 44px 44px 30px;gap:6px;align-items:center;padding:6px 10px;margin-bottom:4px;}
+.lb-list-header span{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
+.lb-list-header span.right{text-align:right;}
+.lb-row{display:grid;grid-template-columns:36px 1fr 60px 44px 44px 44px 44px 30px;gap:6px;align-items:center;padding:9px 10px;border-radius:var(--radius);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:5px;transition:background .15s;}
+.lb-row:hover{background:var(--bg3);}
+.lb-row.top{border-color:rgba(239,159,39,0.3);}
+.rk{font-size:13px;font-weight:500;color:var(--text3);text-align:center;}
+.rk.medal{font-size:16px;}
+.sc-cell{font-size:18px;font-weight:500;text-align:right;}
+.comp-cell{font-size:12px;font-weight:500;text-align:right;}
+.trend-cell{text-align:center;font-size:15px;}
+@media(max-width:700px){.main{grid-template-columns:1fr;}.stats{grid-template-columns:1fr;}.lb-list-header,.lb-row{grid-template-columns:30px 1fr 52px 40px 40px 28px;}.hide-m{display:none;}}
+/* ── Drivers ── */
+.dr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.dr-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;}
+.dr-card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.dr-avatar{width:40px;height:40px;border-radius:50%;background:var(--bg3);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;font-weight:600;color:var(--text2);}
+.dr-plate{font-size:14px;font-weight:600;}
+.dr-make{font-size:11px;color:var(--text3);}
+.dr-score{font-size:20px;font-weight:500;}
+.dr-fields{display:flex;flex-direction:column;gap:8px;}
+.dr-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.dr-field label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.dr-field input,.dr-field select{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:7px 10px;outline:none;transition:border-color .15s;-webkit-appearance:none;}
+.dr-field input:focus,.dr-field select:focus{border-color:var(--info);}
+.dr-field select option{background:#2a2a27;}
+.dr-saved{font-size:10px;color:var(--success);opacity:0;transition:opacity .4s;margin-top:6px;height:14px;}
+.dr-saved.show{opacity:1;}
+.dr-name-tag{font-size:11px;color:var(--text2);margin-top:1px;}
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- ── Header ── -->
+  <div class="header">
+    <h1>DriveIQ <span style="font-size:13px;font-weight:400;color:var(--text2);">— Intelligent Driving Analytics</span></h1>
+    <div class="tabs">
+      <button class="tab active" id="tab-dash" onclick="switchTab('dash')"><i class="ti ti-layout-dashboard" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Dashboard</button>
+      <button class="tab" id="tab-lb" onclick="switchTab('lb')"><i class="ti ti-trophy" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--gold);"></i>Weekly Leaderboard</button>
+      <button class="tab" id="tab-drivers" onclick="switchTab('drivers')"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
+    </div>
+    <span class="badge">Pre-calibration</span>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       DASHBOARD VIEW
+  ══════════════════════════════════════════ -->
+  <div id="view-dash">
+    <div class="stats">
+      <div class="stat" id="fleet-avg-card" style="display:flex;gap:14px;align-items:flex-start;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div style="font-size:11px;color:var(--gold);">&#9733;&#9733;&#9733;&#9733;&#9734;</div><span id="s-trend"></span></div></div><div id="tier-breakdown" style="flex:1;padding-top:20px;"></div></div>
+      <div class="stat"><div class="lbl">Scored trips</div><div class="val" id="s-trips">—</div><div class="sub"><span class="s-range">—</span> &middot; <span style="color:var(--text2);font-weight:600;"><span id="s-vehs">—</span></span> <span style="color:var(--text2);font-weight:600;">Active</span></div></div>
+    </div>
+    <div class="main">
+      <div><div class="slabel">Vehicle ranking &mdash; click to view trips</div><div id="ranking"></div></div>
+      <div><div class="slabel" id="trip-label">Select a vehicle</div>
+      <div id="vehicle-summary"></div>
+      <div id="trips" style="max-height:490px;overflow-y:auto;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;"><div class="empty"><i class="ti ti-arrow-left" style="font-size:18px;display:block;margin-bottom:8px;"></i>Click a vehicle to see all trips</div></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       LEADERBOARD VIEW
+  ══════════════════════════════════════════ -->
+  <div id="view-lb" style="display:none;">
+    <div class="week-nav">
+      <button id="btn-prev" onclick="changeWeek(-1)">&#8592;</button>
+      <span id="week-label"></span>
+      <button id="btn-next" onclick="changeWeek(1)">&#8594;</button>
+    </div>
+    <div id="podium" class="podium"></div>
+    <div class="lb-list-header">
+      <span></span>
+      <span>Vehicle</span>
+      <span class="right hide-m">Score</span>
+      <span class="right">Spd</span>
+      <span class="right">Brk</span>
+      <span class="right hide-m">Acc</span>
+      <span class="right hide-m">Crn</span>
+      <span></span>
+    </div>
+    <div id="lb-list"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       DRIVERS VIEW
+  ══════════════════════════════════════════ -->
+  <div id="view-drivers" style="display:none;">
+    <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="slabel">Driver Profiles</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">Data is saved in this browser. Use Export/Import to move it with the file.</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="exportDrivers()" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;"><i class="ti ti-download" style="font-size:13px;"></i> Export</button>
+        <label style="background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;">
+          <i class="ti ti-upload" style="font-size:13px;"></i> Import
+          <input type="file" accept=".json" onchange="importDrivers(event)" style="display:none;">
+        </label>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div style="position:relative;flex:1;min-width:160px;max-width:280px;">
+        <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none;"></i>
+        <input id="dr-search" type="text" placeholder="Filter by last initial..." maxlength="1"
+          style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:7px 10px 7px 32px;outline:none;text-transform:uppercase;"
+          oninput="filterDrivers(this.value)">
+      </div>
+      <div id="dr-alpha" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+    </div>
+    <div class="dr-grid" id="dr-grid"></div>
+  </div>
+</div>
+
+<script>
+// driver helpers — hoisted so available on first render
+// Supabase client — driver profiles stored in cloud DB
+const _sb=supabase.createClient('__SUPA_URL__','__SUPA_KEY__');
+let _drCache={};
+function loadDrivers(){ return _drCache; }
+function saveDrivers(data){ _drCache=data; }
+async function initDrivers(){
+  const {data}=await _sb.from('drivers').select('*');
+  _drCache={};
+  if(data) data.forEach(function(r){ _drCache[r.plate]={first:r.first_name||'',last:r.last_initial||'',age:r.age||'',sex:r.sex||'',note:r.notes||''}; });
+}
+function driverInitials(d){ var f=(d.first||'').trim(),l=(d.last||'').trim(); return (f||l)?(f[0]||'')+(l[0]||''):'?'; }
+const GOLD='#EF9F27';
+function sc(s){if(s>=90)return'var(--success)';if(s>=70)return'var(--info)';if(s>=50)return'var(--warning)';return'var(--danger)';}
+function stars(s){if(s>=90)return'★★★★★';if(s>=80)return'★★★★☆';if(s>=70)return'★★★☆☆';if(s>=60)return'★★☆☆☆';return'★☆☆☆☆';}
+function tot(t){if(t.lc)return Math.round(0.364*t.brk+0.364*t.crn+0.273*t.acc);return Math.round(0.45*t.spd+0.20*t.brk+0.20*t.crn+0.15*t.acc);}
+function tripSize(km){if(km<10)return'short';if(km>=25)return'long';return'standard';}
+function trendIcon(t,sz){sz=sz||13;if(t==='improving')return'<i class="ti ti-trending-up" style="font-size:'+sz+'px;color:var(--success);" title="Improving"></i>';if(t==='declining')return'<i class="ti ti-trending-down" style="font-size:'+sz+'px;color:var(--danger);" title="Declining"></i>';if(t==='stable')return'<i class="ti ti-minus" style="font-size:'+sz+'px;color:var(--text3);" title="Stable"></i>';return'<span style="color:var(--text3);font-size:10px;">—</span>';}
+function cv(val){return val===null||val===undefined?'<span style="color:var(--text3);">—</span>':'<span style="color:'+sc(val)+';">'+val+'</span>';}
+
+let vehicles=[];
+let incData=[];
+let weeksData=[];
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(tab){
+  document.getElementById('view-dash').style.display    = tab==='dash'?'':'none';
+  document.getElementById('view-lb').style.display      = tab==='lb'?'':'none';
+  document.getElementById('view-drivers').style.display = tab==='drivers'?'':'none';
+  document.getElementById('tab-dash').classList.toggle('active',    tab==='dash');
+  document.getElementById('tab-lb').classList.toggle('active',      tab==='lb');
+  document.getElementById('tab-drivers').classList.toggle('active', tab==='drivers');
+  if(tab==='lb') renderLeaderboard();
+  if(tab==='drivers') renderDrivers();
+  if(tab==='dash') renderRanking();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+let sel=null;
+function renderRanking(){
+  const el=document.getElementById('ranking');el.innerHTML='';
+  const M=['🥇','🥈','🥉'];
+  vehicles.forEach(function(v,i){
+    const row=document.createElement('div');
+    row.className='rank-row'+(sel===v.plate?' active':'');
+    const badge=i<3?'<span style="font-size:15px;">'+M[i]+'</span>':'<span style="font-size:11px;font-weight:500;color:var(--text3);">#'+(i+1)+'</span>';
+    const ti=v.trend==='improving'
+      ?'<i class="ti ti-trending-up" style="font-size:13px;color:var(--success);" title="Improving"></i>'
+      :v.trend==='declining'
+      ?'<i class="ti ti-trending-down" style="font-size:13px;color:var(--danger);" title="Declining"></i>'
+      :v.trend==='stable'
+      ?'<i class="ti ti-minus" style="font-size:13px;color:var(--text3);" title="Stable"></i>'
+      :'';
+    var drD=loadDrivers()[v.plate]||{};
+    var dName=((drD.first||'').trim()+' '+((drD.last||'').trim()?(drD.last||'').trim().toUpperCase()+'.':'')).trim();
+    row.innerHTML=badge+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="display:flex;align-items:center;gap:5px;margin-bottom:1px;">'+
+          (dName
+            ? '<span style="font-size:12px;font-weight:600;">'+dName+'</span>'
+            : '<span style="font-size:11px;font-weight:500;">'+v.plate+'</span>')+
+          (v.low_cov?'<span style="font-size:9px;color:var(--warning);">low cov</span>':'')+
+        '</div>'+
+        (dName?'<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">'+v.plate+' &middot; '+v.make+'</div>':
+                '<div style="font-size:10px;color:var(--text2);margin-bottom:2px;">'+v.make+'</div>')+
+        '<div class="bwrap"><div class="bfill" style="width:'+v.avg+'%;background:'+sc(v.avg)+';"></div></div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:54px;">'+
+        '<div style="font-size:14px;font-weight:500;color:'+sc(v.avg)+';">'+v.avg+'</div>'+
+        ti+
+      '</div>';
+    row.onclick=function(){selectV(v.plate);};
+    el.appendChild(row);
+  });
+}
+
+function selectV(plate){
+  sel=plate;renderRanking();
+  const v=vehicles.find(function(x){return x.plate===plate;});
+  document.getElementById('trip-label').textContent=v.plate+' '+v.make+' — '+v.trips.length+' trip'+(v.trips.length!==1?'s':'')+' scored';
+  const el=document.getElementById('trips');
+  const sumEl=document.getElementById('vehicle-summary');
+  const compNames={spd:'Speeding',brk:'Braking',acc:'Acceleration',crn:'Cornering'};
+  const coachTips={
+    spd:'Keep to the posted speed limit on every route. Even a few minutes of speeding can drag your score down. Try using cruise control on motorways — it makes a noticeable difference within a week.',
+    brk:'Leave a little more space between you and the car ahead. You will naturally brake earlier and smoother, and your braking score usually improves within a week once the habit clicks.',
+    acc:'Press the accelerator a little more gently when pulling away from lights and roundabouts. This is one of the easiest things to change and most drivers see results within just a few days.',
+    crn:'Ease off before corners rather than mid-turn. On routes you drive regularly, try slowing a little earlier going into bends — this tends to improve gradually over a couple of weeks.'
+  };
+  const nextTarget=v.next_target||null;
+  const ptsNeeded=nextTarget?nextTarget-v.avg:0;
+  const predText=nextTarget
+    ?'<div style="margin-top:10px;background:var(--bg3);border-radius:8px;padding:10px 12px;">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
+        +'<span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;">Next level</span>'
+        +'<span style="font-size:12px;font-weight:500;color:var(--gold);">'+stars(nextTarget)+' '+nextTarget+'/100</span>'
+        +'<span style="font-size:11px;color:var(--text3);">&mdash; '+ptsNeeded+' point'+(ptsNeeded!==1?'s':'')+' away</span>'
+      +'</div>'
+      +(v.pred_comp?'<p style="font-size:12px;color:var(--text2);line-height:1.6;"><strong>Focus: '+compNames[v.pred_comp]+'.</strong> '+coachTips[v.pred_comp]+'</p>':'')
+    +'</div>'
+    :'<div style="margin-top:8px;font-size:11px;color:var(--success);">&#10003; Top tier — keep this standard and your score will speak for itself.</div>';
+  const trendBadge=v.trend==='improving'
+    ?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--success);background:var(--success-bg);padding:2px 8px;border-radius:20px;margin-left:8px;"><i class="ti ti-trending-up" style="font-size:11px;"></i> Improving</span>'
+    :v.trend==='declining'
+    ?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--danger);background:var(--danger-bg);padding:2px 8px;border-radius:20px;margin-left:8px;"><i class="ti ti-trending-down" style="font-size:11px;"></i> Declining</span>'
+    :'';
+  el.innerHTML='';
+  sumEl.innerHTML='<div style="background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--info);">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+      +(v.rank===1?'<span style="font-size:22px;">🥇</span>':v.rank===2?'<span style="font-size:22px;">🥈</span>':v.rank===3?'<span style="font-size:22px;">🥉</span>':'')
+      +'<span style="font-size:11px;font-weight:500;color:var(--text3);">Fleet rank</span>'
+      +'<span style="font-size:18px;font-weight:500;">#'+v.rank+'</span>'
+      +'<span style="font-size:11px;color:var(--text3);">of '+vehicles.length+' vehicles</span>'
+      +trendBadge
+      +'<div style="margin-left:auto;display:flex;gap:4px;align-items:center;">'
+      +[['Speeding',v.spd_avg],['Braking',v.brk_avg],['Acceleration',v.acc_avg],['Cornering',v.crn_avg]].map(function(p){
+          var lbl=p[0],val=p[1];
+          if(val===null||val===undefined)return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:12px;color:var(--text3);">—</div></div>';
+          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:13px;font-weight:600;color:'+sc(val)+';">'+val+'</div></div>';
+      }).join('')
+      +'</div>'
+      +'<span style="font-size:20px;font-weight:500;color:'+sc(v.avg)+';">'+v.avg+'</span>'
+      +'<span style="font-size:12px;color:#EF9F27;">'+stars(v.avg)+'</span>'
+    +'</div>'
+    +(v.summary?'<p style="font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:10px;">'+v.summary+'</p>':'')
+    +predText
+  +'</div>';
+
+  v.trips.forEach(function(t){
+    const score=tot(t);
+    const comps=[
+      {k:'Speeding',v:t.spd,w:t.lc?null:0.45,mx:45},
+      {k:'Braking', v:t.brk,w:t.lc?0.364:0.20,mx:t.lc?36:20},
+      {k:'Acceleration',v:t.acc,w:t.lc?0.273:0.15,mx:t.lc?27:15},
+      {k:'Cornering',v:t.crn,w:t.lc?0.364:0.20,mx:t.lc?36:20}
+    ];
+    const cH=comps.map(function(c){
+      if(c.v===null)return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cv" style="color:var(--text3)">—</div><div class="cs">—</div></div>';
+      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cv" style="color:'+sc(c.v)+';">'+Math.round(c.v)+'</div><div class="cs">'+stars(c.v)+'</div></div>';
+    }).join('');
+    const sz=tripSize(t.km);
+    const szTag=sz==='short'?'<span class="tag ts" style="margin-left:4px;" data-tip="Short trip: under 10km">Short trip</span>'
+               :sz==='long'?'<span class="tag tl" style="margin-left:4px;" data-tip="Long trip: 25km or more">Long trip</span>'
+               :'<span class="tag" style="margin-left:4px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);" data-tip="Standard trip: 10–24km">Standard</span>';
+    const rpmTag=t.rpm_s>3?'<span class="tag" style="margin-left:4px;background:#3b0764;color:#d8b4fe;">⚡ High RPM</span>':'';
+    const parts=t.t.split('→');
+    const startTime=parts[0]||t.t;
+    const endTime=parts[1]||'';
+    const mapId='trip-map-'+t.id;
+    const card=document.createElement('div');card.className='trip-card';
+    card.style.cssText='display:flex;gap:12px;align-items:stretch;';
+    const infoDiv=document.createElement('div');infoDiv.style.cssText='flex:1;min-width:0;';
+    infoDiv.innerHTML=
+      '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">'
+        +'<div style="flex:1;">'
+          +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+            +'<span style="font-size:13px;font-weight:600;color:var(--text);">'+(t.date||'')+'</span>'
+            +'<span style="font-size:12px;color:var(--text2);">'+startTime+(endTime?' &rarr; '+endTime:'')+'</span>'
+            +'<span style="font-size:11px;color:var(--text3);">&middot; '+t.km+'km</span>'
+            +szTag+rpmTag
+          +'</div>'
+          +(t.from?'<div style="font-size:11px;color:var(--text3);margin-top:4px;"><i class="ti ti-map-pin" style="font-size:10px;vertical-align:-1px;color:var(--info);"></i> <span style="color:var(--text2);">'+t.from+'</span>'+(t.to?' &rarr; <span style="color:var(--text2);">'+t.to+'</span>':'')+'</div>':'')
+        +'</div>'
+        +'<div style="text-align:right;flex-shrink:0;">'
+          +(score===100?'<span style="font-size:13px;margin-right:3px;">🏆</span>':score>=90?'<span style="font-size:13px;margin-right:3px;">💎</span>':'')+'<span style="font-size:20px;font-weight:500;color:'+sc(score)+';">'+score+'</span>'
+          +'<span style="font-size:12px;color:'+GOLD+';margin-left:3px;">'+stars(score)+'</span>'
+        +'</div>'
+      +'</div>'
+      +'<div class="comps">'+cH+'</div>'
+      +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">'
+        +'<span style="font-size:10px;color:var(--text3);white-space:nowrap;">Total</span>'
+        +'<div class="bwrap" style="height:5px;"><div class="bfill" style="width:'+score+'%;background:'+sc(score)+';"></div></div>'
+        +'<span style="font-size:11px;font-weight:500;color:'+sc(score)+';white-space:nowrap;">'+score+'/100</span>'+(t.raw!==score?'<span style="font-size:9px;color:var(--text3);margin-left:4px;">(raw '+t.raw+')</span>':'')
+      +'</div>';
+    card.appendChild(infoDiv);
+    let mapDiv=null;
+    if(t.slat&&t.slon&&t.elat&&t.elon){
+      mapDiv=document.createElement('div');
+      mapDiv.className='trip-map-sq';
+      mapDiv.id=mapId;
+      card.appendChild(mapDiv);
+    }
+    el.appendChild(card);
+    if(mapDiv){
+      mapDiv.dataset.slat=t.slat;mapDiv.dataset.slon=t.slon;
+      mapDiv.dataset.elat=t.elat;mapDiv.dataset.elon=t.elon;
+      mapObserver.observe(mapDiv);
+    }
+  });
+}
+
+function initLeafletMap(mapDiv){
+  if(mapDiv._mapDone)return;mapDiv._mapDone=true;
+  const slat=+mapDiv.dataset.slat,slon=+mapDiv.dataset.slon;
+  const elat=+mapDiv.dataset.elat,elon=+mapDiv.dataset.elon;
+  const map=L.map(mapDiv,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  const sIcon=L.divIcon({html:'<div style="background:#22c55e;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
+  const eIcon=L.divIcon({html:'<div style="background:#ef4444;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
+  L.marker([slat,slon],{icon:sIcon}).addTo(map);
+  L.marker([elat,elon],{icon:eIcon}).addTo(map);
+  map.fitBounds([[slat,slon],[elat,elon]],{padding:[18,18]});
+  fetch('https://router.project-osrm.org/route/v1/driving/'+slon+','+slat+';'+elon+','+elat+'?overview=full&geometries=geojson')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(data.routes&&data.routes[0]){
+        const coords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
+        const pl=L.polyline(coords,{color:'#1e3a8a',weight:3,opacity:0.9}).addTo(map);
+        map.fitBounds(pl.getBounds(),{padding:[18,18]});
+      }
+    }).catch(function(){});
+}
+
+const mapObserver=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){if(e.isIntersecting)initLeafletMap(e.target);});
+},{threshold:0.1});
+
+// Tier breakdown
+(function(){
+  const tiers=[{label:'Excellent',min:90,max:101,col:'var(--success)'},{label:'Good',min:70,max:90,col:'var(--info)'},{label:'Average',min:50,max:70,col:'var(--warning)'},{label:'Poor',min:0,max:50,col:'var(--danger)'}];
+  const el=document.getElementById('tier-breakdown');const n=vehicles.length;
+  tiers.forEach(function(tier){
+    const count=vehicles.filter(function(v){return v.avg>=tier.min&&v.avg<tier.max;}).length;
+    if(count===0)return;
+    const pct=Math.round(count/n*100);
+    const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:5px;margin-bottom:4px;';
+    row.innerHTML='<span style="font-size:9px;color:'+tier.col+';min-width:40px;letter-spacing:.5px;">'+tier.label+'</span>'
+      +'<div style="flex:1;background:var(--bg3);border-radius:2px;height:3px;"><div style="background:'+tier.col+';height:3px;border-radius:2px;width:'+pct+'%;"></div></div>'
+      +'<span style="font-size:9px;color:var(--text2);min-width:34px;text-align:right;">'+count+' <span style="color:var(--text3);">('+pct+'%)</span></span>';
+    el.appendChild(row);
+  });
+})();
+
+
+
+async function loadDashboardData(){
+  var res=await _sb.from('latest_run').select('data').eq('id',1).single();
+  if(res.error||!res.data){ console.error('Failed to load data',res.error); return; }
+  var d=res.data.data;
+  vehicles=d.vehicles||[];
+  incData=d.incidents||[];
+  weeksData=d.weeks||[];
+  // Stat cards
+  var fa=d.fleet_avg||0, ft=d.fleet_trend||0;
+  document.getElementById('s-avg').textContent=fa;
+  document.getElementById('s-trips').textContent=d.total_trips||'';
+  document.getElementById('s-vehs').textContent=d.num_vehicles||'';
+  document.querySelectorAll('.s-range').forEach(function(el){ el.textContent=d.date_range||''; });
+  document.getElementById('s-trend').innerHTML=
+    ft>0?'<span style="font-size:10px;font-weight:600;color:var(--success);">&#8679; +'+ft+'</span>'
+    :ft<0?'<span style="font-size:10px;font-weight:600;color:var(--danger);">&#8681; '+ft+'</span>'
+    :'<span style="font-size:10px;color:var(--text3);">&#8594; stable</span>';
+  // Recalculate leaderboard week index
+  var now=Date.now()/1000;
+  lbIdx=Math.max(0,weeksData.length-1);
+  for(var i=weeksData.length-1;i>=0;i--){
+    if(weeksData[i].ts+7*86400<now){ lbIdx=i; break; }
+  }
+}
+Promise.all([initDrivers(),loadDashboardData()]).then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
+
+// ── Leaderboard ────────────────────────────────────────────────────────────
+// Default to last fully-completed week (Sunday has passed)
+let lbIdx=0; // recalculated by loadDashboardData()
+
+function changeWeek(dir){
+  lbIdx=Math.max(0,Math.min(weeksData.length-1,lbIdx+dir));
+  renderLeaderboard();
+}
+
+function renderLeaderboard(){
+  var drData=loadDrivers();
+  function drName(plate){ var d=drData[plate]||{}; var f=(d.first||'').trim(),l=(d.last||'').trim().toUpperCase(); return f||l?(f+(l?(' '+l+'.'):'')):''; }
+  function drAge(plate){ return (drData[plate]||{}).age||''; }
+  const wk=weeksData[lbIdx];
+  document.getElementById('week-label').textContent=wk.label;
+  document.getElementById('btn-prev').disabled=lbIdx===0;
+  document.getElementById('btn-next').disabled=lbIdx===weeksData.length-1;
+
+  const top3=wk.rankings.slice(0,3);
+  const medals=['🥇','🥈','🥉'];
+  const pClass=['p1','p2','p3'];
+  const podiumOrder=top3.length>=2?[1,0,2]:[0];
+  const podEl=document.getElementById('podium');podEl.innerHTML='';
+  podiumOrder.forEach(function(idx){
+    if(idx>=top3.length)return;
+    const r=top3[idx];
+    const slot=document.createElement('div');slot.className='podium-slot';
+    slot.innerHTML=
+      '<div class="podium-card '+pClass[idx]+'">'
+        +'<span class="podium-trend">'+trendIcon(r.trend,14)+'</span>'
+        +'<span class="podium-medal">'+medals[idx]+'</span>'
+        +(drName(r.plate)?'<div class="podium-plate">'+drName(r.plate)+'</div>'+'<div class="podium-make">'+r.plate+' &middot; '+r.make+(drAge(r.plate)?' &middot; '+drAge(r.plate):'')+'</div>'
+        :'<div class="podium-plate">'+r.plate+'</div>'+'<div class="podium-make">'+r.make+'</div>')
+        +'<div class="podium-score" style="color:'+sc(r.score)+';">'+r.score+'</div>'
+        +'<div style="font-size:10px;color:'+GOLD+';margin-top:2px;">'+stars(r.score)+'</div>'
+        +'<div class="podium-trips">'+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'
+        +'<div class="podium-comps">'
+          +[['Spd',r.spd],['Brk',r.brk],['Acc',r.acc],['Crn',r.crn]].map(function(p){
+            return'<div class="podium-comp"><div class="ck">'+p[0]+'</div>'
+              +(p[1]===null?'<div class="cv" style="color:var(--text3);">—</div>':'<div class="cv" style="color:'+sc(p[1])+';">'+p[1]+'</div>')
+            +'</div>';
+          }).join('')
+        +'</div>'
+      +'</div>';
+    podEl.appendChild(slot);
+  });
+
+  const listEl=document.getElementById('lb-list');listEl.innerHTML='';
+  if(!wk.rankings.length){listEl.innerHTML='<div class="empty">No scored trips for this week.</div>';return;}
+  wk.rankings.forEach(function(r){
+    const row=document.createElement('div');
+    row.className='lb-row'+(r.rank<=3?' top':'');
+    const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':'';
+    row.innerHTML=
+      '<div class="rk'+(medal?' medal':'')+'">'+( medal||'#'+r.rank)+'</div>'
+      +'<div>'
+        +(drName(r.plate)?'<div style="font-size:12px;font-weight:600;">'+drName(r.plate)+(drAge(r.plate)?'<span style="font-size:9px;font-weight:400;color:var(--text3);margin-left:5px;">'+drAge(r.plate)+'</span>':'')+'</div>':'') 
+        +'<div style="font-size:10px;color:var(--text3);">'+(drName(r.plate)?r.plate+' &middot; ':'')+r.make+' &middot; '+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'
+        +'<div class="bwrap"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
+      +'</div>'
+      +'<div class="sc-cell hide-m" style="color:'+sc(r.score)+';">'+r.score+'</div>'
+      +'<div class="comp-cell">'+cv(r.spd)+'</div>'
+      +'<div class="comp-cell">'+cv(r.brk)+'</div>'
+      +'<div class="comp-cell hide-m">'+cv(r.acc)+'</div>'
+      +'<div class="comp-cell hide-m">'+cv(r.crn)+'</div>'
+      +'<div class="trend-cell">'+trendIcon(r.trend,13)+'</div>';
+    listEl.appendChild(row);
+  });
+}
+
+// ── Drivers ────────────────────────────────────────────────────────────────
+function driverInitials(d){
+  var f=(d.first||'').trim(), l=(d.last||'').trim();
+  if(f||l) return (f[0]||'')+(l[0]||'');
+  return '?';
+}
+function renderDrivers(){
+  var grid = document.getElementById('dr-grid');
+  grid.innerHTML = '';
+  var drData = loadDrivers();
+  var AGES = ['Under 25','25–34','35–44','45–54','55–64','65+'];
+  var SEXES = ['Male','Female','Non-binary','Prefer not to say'];
+  vehicles.forEach(function(v){
+    var d = drData[v.plate] || {};
+    var initials = driverInitials(d);
+    var hasName = (d.first||'').trim() || (d.last||'').trim();
+    var card = document.createElement('div');
+    card.className = 'dr-card';
+    var ageOpts = AGES.map(function(a){ return '<option value="'+a+'"'+(d.age===a?' selected':'')+'>'+a+'</option>'; }).join('');
+    var sexOpts = SEXES.map(function(s){ return '<option value="'+s+'"'+(d.sex===s?' selected':'')+'>'+s+'</option>'; }).join('');
+    var pid = v.plate.replace(/\s/g,'_');
+    card.innerHTML =
+      '<div class="dr-card-header">'
+        +'<div class="dr-avatar" id="av-'+pid+'">'+initials+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div class="dr-plate">'+v.plate+'</div>'
+          +'<div class="dr-make">'+v.make+'</div>'
+          +(hasName?'<div class="dr-name-tag">'+((d.first||'')+' '+(d.last||'')).trim()+'</div>':'')
+        +'</div>'
+        +'<div class="dr-score" style="color:'+sc(v.avg)+';">'+v.avg+'</div>'
+      +'</div>'
+      +'<div class="dr-fields">'
+        +'<div class="dr-row">'
+          +'<div class="dr-field"><label>First name</label><input type="text" id="dr-first-'+pid+'" value="'+(d.first||'')+'" placeholder="First name"></div>'
+          +'<div class="dr-field"><label>Last initial</label><input type="text" id="dr-last-'+pid+'" value="'+(d.last||'')+'" placeholder="A" maxlength="1" style="text-transform:uppercase;"></div>'
+        +'</div>'
+        +'<div class="dr-row">'
+          +'<div class="dr-field"><label>Age bracket</label><select id="dr-age-'+pid+'"><option value="">&#8212; select &#8212;</option>'+ageOpts+'</select></div>'
+          +'<div class="dr-field"><label>Sex</label><select id="dr-sex-'+pid+'"><option value="">&#8212; select &#8212;</option>'+sexOpts+'</select></div>'
+        +'</div>'
+        +'<div class="dr-field"><label>Notes</label><input type="text" id="dr-note-'+pid+'" value="'+(d.note||'')+'" placeholder="e.g. night shift driver, probationary"></div>'
+        +'<div class="dr-saved" id="dr-saved-'+pid+'">&#10003; Saved</div>'
+      +'</div>';
+    grid.appendChild(card);
+    var plateRef = v.plate;
+    ['first','last','age','sex','note'].forEach(function(field){
+      var el = document.getElementById('dr-'+field+'-'+pid);
+      if(!el) return;
+      el.addEventListener('change', function(){ saveDr(plateRef); });
+      el.addEventListener('input',  function(){ saveDr(plateRef); });
+    });
+  });
+  buildAlphaBar();
+}
+function saveDr(plate){
+  var pid = plate.replace(/\s/g,'_');
+  var entry={
+    first: (document.getElementById('dr-first-'+pid)||{value:''}).value,
+    last:  (document.getElementById('dr-last-'+pid)||{value:''}).value,
+    age:   (document.getElementById('dr-age-'+pid)||{value:''}).value,
+    sex:   (document.getElementById('dr-sex-'+pid)||{value:''}).value,
+    note:  (document.getElementById('dr-note-'+pid)||{value:''}).value
+  };
+  _drCache[plate]=entry;
+  _sb.from('drivers').upsert({plate:plate,first_name:entry.first,last_initial:entry.last,age:entry.age,sex:entry.sex,notes:entry.note}).then(function(){});
+  var av = document.getElementById('av-'+pid);
+  if(av) av.textContent = driverInitials(entry) || '?';
+  var saved = document.getElementById('dr-saved-'+pid);
+  if(saved){ saved.classList.add('show'); clearTimeout(saved._t); saved._t=setTimeout(function(){ saved.classList.remove('show'); },1800); }
+}
+function filterDrivers(q){
+  q = (q||'').trim().toUpperCase();
+  var drData = loadDrivers();
+  var cards = document.querySelectorAll('#dr-grid .dr-card');
+  var active = document.querySelector('#dr-alpha .alpha-btn.alpha-active');
+  if(active && q === active.dataset.l) { /* already set */ }
+  // Sync alpha bar highlight
+  document.querySelectorAll('#dr-alpha .alpha-btn').forEach(function(btn){
+    btn.classList.toggle('alpha-active', btn.dataset.l === q);
+    btn.style.background = btn.dataset.l === q ? 'var(--info-bg)' : '';
+    btn.style.color = btn.dataset.l === q ? 'var(--info)' : '';
+    btn.style.borderColor = btn.dataset.l === q ? 'var(--info)' : '';
+  });
+  // Sync search input
+  var inp = document.getElementById('dr-search');
+  if(inp && inp.value.toUpperCase() !== q) inp.value = q;
+  cards.forEach(function(card){
+    var plate = card.querySelector('.dr-plate');
+    if(!plate) return;
+    var d = drData[plate.textContent] || {};
+    var initial = (d.last||'').trim().toUpperCase()[0] || '';
+    card.style.display = (!q || initial === q) ? '' : 'none';
+  });
+}
+function buildAlphaBar(){
+  var bar = document.getElementById('dr-alpha');
+  if(!bar) return;
+  bar.innerHTML = '';
+  var drData = loadDrivers();
+  var initials = new Set();
+  vehicles.forEach(function(v){ var d=drData[v.plate]||{}; var i=(d.last||'').trim().toUpperCase()[0]; if(i) initials.add(i); });
+  Array.from(initials).sort().forEach(function(l){
+    var btn = document.createElement('button');
+    btn.className = 'alpha-btn';
+    btn.dataset.l = l;
+    btn.textContent = l;
+    btn.style.cssText = 'background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:12px;font-weight:500;transition:all .12s;';
+    btn.onclick = function(){
+      var cur = document.getElementById('dr-search');
+      var q = cur && cur.value.toUpperCase() === l ? '' : l;
+      filterDrivers(q);
+    };
+    bar.appendChild(btn);
+  });
+}
+async function exportDrivers(){
+  var res=await _sb.from('drivers').select('*');
+  var data={};
+  if(res.data) res.data.forEach(function(r){ data[r.plate]={first:r.first_name||'',last:r.last_initial||'',age:r.age||'',sex:r.sex||'',note:r.notes||''}; });
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='driveiq_drivers.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importDrivers(evt){
+  var file = evt.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      var data=JSON.parse(e.target.result);
+      var rows=Object.entries(data).map(function(kv){ return {plate:kv[0],first_name:kv[1].first||'',last_initial:kv[1].last||'',age:kv[1].age||'',sex:kv[1].sex||'',notes:kv[1].note||''}; });
+      await _sb.from('drivers').upsert(rows);
+      _drCache=data;
+      renderDrivers();
+      renderRanking();
+      var btn=evt.target.parentElement;
+      var orig=btn.innerHTML;
+      btn.innerHTML='<i class="ti ti-check" style="font-size:13px;color:var(--success);"></i> Imported';
+      setTimeout(function(){ btn.innerHTML=orig; },2000);
+    }catch(err){ alert('Invalid driver file.'); }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+</script>
+</body>
+</html>

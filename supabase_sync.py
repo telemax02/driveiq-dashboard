@@ -1,0 +1,224 @@
+"""
+Syncs processed scores_only.json to Supabase after each pipeline run.
+Tables: vehicles, trips, incidents, fleet_runs, latest_run (live dashboard)
+"""
+import json, os, datetime, urllib.request, urllib.error
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+
+SUPA_URL = os.environ['SUPABASE_URL']
+SUPA_KEY = os.environ['SUPABASE_KEY']
+
+
+def _rest(method, table, payload):
+    url = f'{SUPA_URL}/rest/v1/{table}'
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=body, method=method, headers={
+        'apikey': SUPA_KEY,
+        'Authorization': f'Bearer {SUPA_KEY}',
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal',
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()[:300]
+        print(f'  HTTP {e.code} on {table}: {body}')
+        return e.code
+    except Exception as e:
+        print(f'  Error on {table}: {e}')
+        return None
+
+
+def _ts(v):
+    return int(v) if v is not None else None
+
+
+def _batch_upsert(table, rows, chunk=100):
+    for i in range(0, len(rows), chunk):
+        status = _rest('POST', table, rows[i:i+chunk])
+        if status and status >= 400:
+            print(f'  Batch failed at offset {i}')
+
+
+BNE = 36000
+
+
+def _week_mon_ts(ts):
+    d = datetime.datetime.utcfromtimestamp(int(ts) + BNE)
+    mon = (d - datetime.timedelta(days=d.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    return int((mon - datetime.datetime(1970, 1, 1)).total_seconds()) - BNE
+
+
+def _week_label(mon_ts):
+    mon = datetime.datetime.utcfromtimestamp(mon_ts + BNE)
+    sun = mon + datetime.timedelta(days=6)
+    return f"{mon.strftime('%a %d %b')} – {sun.strftime('%a %d %b %Y')}"
+
+
+def _compute_weeks(vehicles):
+    veh_meta = {v['plate']: v['make'] for v in vehicles}
+    weeks = {}
+    for v in vehicles:
+        for t in v['trips']:
+            wk = _week_mon_ts(t.get('begin_ts', 0))
+            weeks.setdefault(wk, {}).setdefault(v['plate'], []).append(t)
+    sorted_wks = sorted(weeks.keys())
+    out = []
+    for i, wk_ts in enumerate(sorted_wks):
+        veh_week = weeks[wk_ts]
+        prev_veh = weeks.get(sorted_wks[i - 1], {}) if i > 0 else {}
+        rankings = []
+        for plate, trps in veh_week.items():
+            km = sum(t['km'] for t in trps) or 1
+            sc = round(sum(t['raw'] * t['km'] for t in trps) / km)
+            spd_t = [t for t in trps if t.get('spd') is not None]
+            spd = round(sum(t['spd'] * t['km'] for t in spd_t) / sum(t['km'] for t in spd_t)) if spd_t else None
+            prev_trps = prev_veh.get(plate, [])
+            prev_sc = None
+            if prev_trps:
+                pkm = sum(t['km'] for t in prev_trps) or 1
+                prev_sc = round(sum(t['raw'] * t['km'] for t in prev_trps) / pkm)
+            trend = None
+            if prev_sc is not None:
+                delta = sc - prev_sc
+                trend = 'improving' if delta >= 3 else ('declining' if delta <= -3 else 'stable')
+            rankings.append({
+                'plate': plate, 'make': veh_meta.get(plate, ''), 'score': sc,
+                'trips': len(trps), 'spd': spd,
+                'brk': round(sum(t['brk'] * t['km'] for t in trps) / km),
+                'acc': round(sum(t['acc'] * t['km'] for t in trps) / km),
+                'crn': round(sum(t['crn'] * t['km'] for t in trps) / km),
+                'trend': trend,
+            })
+        rankings.sort(key=lambda r: r['score'], reverse=True)
+        for j, r in enumerate(rankings): r['rank'] = j + 1
+        out.append({'ts': wk_ts, 'label': _week_label(wk_ts), 'rankings': rankings})
+    return out
+
+
+def _flatten_vehicles(vehicles):
+    """Flatten comp_avgs into spd_avg/brk_avg/acc_avg/crn_avg so the template JS can access them directly."""
+    out = []
+    for v in vehicles:
+        ca = v.get('comp_avgs') or {}
+        vv = dict(v)
+        vv['spd_avg'] = ca.get('spd')
+        vv['brk_avg'] = ca.get('brk', 0)
+        vv['acc_avg'] = ca.get('acc', 0)
+        vv['crn_avg'] = ca.get('crn', 0)
+        out.append(vv)
+    return out
+
+
+def _date_range(vehicles):
+    all_ts = [t['begin_ts'] for v in vehicles for t in v['trips'] if t.get('begin_ts')]
+    if not all_ts:
+        return datetime.datetime.utcnow().strftime('%d %b %Y')
+    earliest = datetime.datetime.utcfromtimestamp(min(all_ts) + BNE).strftime('%d %b')
+    latest = datetime.datetime.utcfromtimestamp(max(all_ts) + BNE).strftime('%d %b %Y')
+    return f'{earliest} – {latest}' if earliest != latest[:6] else latest
+
+
+def sync(scores_path):
+    d = json.load(open(scores_path))
+
+    # ── Vehicles ──────────────────────────────────────────────────────────
+    vehs = [{'plate': v['plate'], 'make': v['make']} for v in d['vehicles']]
+    _batch_upsert('vehicles', vehs)
+    print(f'  vehicles: {len(vehs)} upserted')
+
+    # ── Trips ─────────────────────────────────────────────────────────────
+    trips = []
+    for v in d['vehicles']:
+        for t in v['trips']:
+            trips.append({
+                'id':             t['id'],
+                'plate':          v['plate'],
+                'date_str':       t.get('date', ''),
+                'time_str':       t.get('t', ''),
+                'km':             t.get('km', 0),
+                'raw':            t.get('raw', 0),
+                'spd':            t.get('spd'),        # nullable
+                'brk':            t.get('brk', 0),
+                'acc':            t.get('acc', 0),
+                'crn':            t.get('crn', 0),
+                'cov_pct':        t.get('cov_pct', 0),
+                'incident':       t.get('incident', False),
+                'inc_mx':         t.get('inc_mx', 0),
+                'inc_dur':        t.get('inc_dur', 0),
+                'inc_avg':        t.get('inc_avg', 0),
+                'from_addr':      t.get('from', ''),
+                'to_addr':        t.get('to', ''),
+                'slat':           t.get('slat'),
+                'slon':           t.get('slon'),
+                'elat':           t.get('elat'),
+                'elon':           t.get('elon'),
+                'begin_ts':       _ts(t.get('begin_ts')),
+                'end_ts':         _ts(t.get('end_ts')),
+                'driving_period': t.get('driving_period', 'Day'),
+                'rpm_s':          t.get('rpm_s', 0),
+                'lc':             t.get('lc', False),
+            })
+    # Deduplicate by trip id (keep last occurrence)
+    trips_dedup = {r['id']: r for r in trips}
+    trips = list(trips_dedup.values())
+    _batch_upsert('trips', trips)
+    print(f'  trips: {len(trips)} upserted')
+
+    # ── Incidents ─────────────────────────────────────────────────────────
+    incs = []
+    for inc in d.get('incidents', []):
+        incs.append({
+            'plate':        inc['plate'],
+            'trip_ref':     inc['trip'],
+            'time_str':     inc.get('time', ''),
+            'date_str':     inc.get('date', ''),
+            'mx':           inc.get('mx', 0),
+            'dur':          inc.get('dur', 0),
+            'avg_speed':    inc.get('avg', 0),
+            'datetime_str': inc.get('datetime', ''),
+            'speed_str':    inc.get('speed', ''),
+            'loc':          inc.get('loc', ''),
+            'coords':       inc.get('coords', []),
+            'begin_ts':     _ts(inc.get('begin_ts')),
+            'end_ts':       _ts(inc.get('end_ts')),
+        })
+    if incs:
+        _batch_upsert('incidents', incs)
+    print(f'  incidents: {len(incs)} upserted')
+
+    # ── Fleet run record ──────────────────────────────────────────────────
+    _rest('POST', 'fleet_runs', {
+        'fleet_avg':     d['fleet_avg'],
+        'num_vehicles':  d['num_vehicles'],
+        'total_trips':   d['total_trips'],
+        'num_incidents': len(d.get('incidents', [])),
+    })
+    print(f'  fleet_runs: recorded (avg {d["fleet_avg"]})')
+
+    # ── latest_run (live dashboard snapshot) ──────────────────────────────
+    weeks = _compute_weeks(d['vehicles'])
+    date_range = _date_range(d['vehicles'])
+    _rest('POST', 'latest_run', {
+        'id': 1,
+        'data': {
+            'vehicles':     _flatten_vehicles(d['vehicles']),
+            'incidents':    d.get('incidents', []),
+            'weeks':        weeks,
+            'fleet_avg':    d['fleet_avg'],
+            'num_vehicles': d['num_vehicles'],
+            'total_trips':  d['total_trips'],
+            'fleet_trend':  d.get('fleet_trend', 0),
+            'date_range':   date_range,
+        }
+    })
+    print(f'  latest_run: updated')
+
+
+if __name__ == '__main__':
+    BASE = os.path.dirname(os.path.abspath(__file__))
+    print('Syncing to Supabase...')
+    sync(os.path.join(BASE, 'scores_only.json'))
+    print('Done.')

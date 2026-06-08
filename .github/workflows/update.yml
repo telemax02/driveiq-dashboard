@@ -1,0 +1,49 @@
+name: DriveIQ Pipeline
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # every hour on the hour
+  workflow_dispatch:        # also allow manual trigger from GitHub UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # needed to push docs/index.html back
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install python-dotenv
+
+      - name: Fetch Flespi data
+        env:
+          FLESPI_TOKEN: ${{ secrets.FLESPI_TOKEN }}
+          FLESPI_CALC_ID: ${{ secrets.FLESPI_CALC_ID }}
+        run: python score_v2.py
+
+      - name: Geocode and build dashboard HTML
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python build_html.py
+
+      - name: Sync to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python supabase_sync.py
+
+      - name: Commit updated dashboard and geo cache
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html geo_cache.json
+          git diff --staged --quiet && echo "No changes" || (git commit -m "chore: auto-update dashboard [skip ci]" && git push)

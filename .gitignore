@@ -1,0 +1,9 @@
+.env
+scores_only.json
+incident_cache.json
+fleet_history.json
+__pycache__/
+*.pyc
+*.py[cod]
+node_modules/
+patch_*.py
