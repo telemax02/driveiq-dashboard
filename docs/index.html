@@ -201,7 +201,7 @@ function saveDrivers(data){ _drCache=data; }
 async function initDrivers(){
   const {data}=await _sb.from('drivers').select('*');
   _drCache={};
-  if(data) data.forEach(function(r){ _drCache[r.plate]={first:r.first_name||'',last:r.last_initial||'',age:r.age||'',sex:r.sex||'',note:r.notes||'',email:r.email||''}; });
+  if(data) data.forEach(function(r){ _drCache[r.plate]={first:r.first_name||'',last:r.last_initial||'',age:r.age||'',sex:r.sex||'',email:r.email||''}; });
 }
 function driverInitials(d){ var f=(d.first||'').trim(),l=(d.last||'').trim(); return (f||l)?(f[0]||'')+(l[0]||''):'?'; }
 const GOLD='#EF9F27';
@@ -573,13 +573,12 @@ function renderDrivers(){
           +'<div class="dr-field"><label>Age bracket</label><select id="dr-age-'+pid+'"><option value="">&#8212; select &#8212;</option>'+ageOpts+'</select></div>'
           +'<div class="dr-field"><label>Sex</label><select id="dr-sex-'+pid+'"><option value="">&#8212; select &#8212;</option>'+sexOpts+'</select></div>'
         +'</div>'
-        +'<div class="dr-field"><label>Notes</label><input type="text" id="dr-note-'+pid+'" value="'+(d.note||'')+'" placeholder="e.g. night shift driver, probationary"></div>'
         +'<div class="dr-field"><label>Email</label><input type="email" id="dr-email-'+pid+'" value="'+(d.email||'')+'" placeholder="driver@example.com"></div>'
         +'<div class="dr-saved" id="dr-saved-'+pid+'">&#10003; Saved</div>'
       +'</div>';
     grid.appendChild(card);
     var plateRef = v.plate;
-    ['first','last','age','sex','note','email'].forEach(function(field){
+    ['first','last','age','sex','email'].forEach(function(field){
       var el = document.getElementById('dr-'+field+'-'+pid);
       if(!el) return;
       el.addEventListener('change', function(){ saveDr(plateRef); });
@@ -595,11 +594,10 @@ function saveDr(plate){
     last:  (document.getElementById('dr-last-'+pid)||{value:''}).value,
     age:   (document.getElementById('dr-age-'+pid)||{value:''}).value,
     sex:   (document.getElementById('dr-sex-'+pid)||{value:''}).value,
-    note:  (document.getElementById('dr-note-'+pid)||{value:''}).value,
     email: (document.getElementById('dr-email-'+pid)||{value:''}).value
   };
   _drCache[plate]=entry;
-  _sb.from('drivers').upsert({plate:plate,first_name:entry.first,last_initial:entry.last,age:entry.age,sex:entry.sex,notes:entry.note,email:entry.email}).then(function(){});
+  _sb.from('drivers').upsert({plate:plate,first_name:entry.first,last_initial:entry.last,age:entry.age,sex:entry.sex,email:entry.email}).then(function(){});
   var av = document.getElementById('av-'+pid);
   if(av) av.textContent = driverInitials(entry) || '?';
   var saved = document.getElementById('dr-saved-'+pid);
@@ -653,7 +651,7 @@ function buildAlphaBar(){
 async function exportDrivers(){
   var res=await _sb.from('drivers').select('*');
   var data={};
-  if(res.data) res.data.forEach(function(r){ data[r.plate]={first:r.first_name||'',last:r.last_initial||'',age:r.age||'',sex:r.sex||'',note:r.notes||'',email:r.email||''}; });
+  if(res.data) res.data.forEach(function(r){ data[r.plate]={first:r.first_name||'',last:r.last_initial||'',age:r.age||'',sex:r.sex||'',email:r.email||''}; });
   var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -668,7 +666,7 @@ function importDrivers(evt){
   reader.onload = async function(e){
     try{
       var data=JSON.parse(e.target.result);
-      var rows=Object.entries(data).map(function(kv){ return {plate:kv[0],first_name:kv[1].first||'',last_initial:kv[1].last||'',age:kv[1].age||'',sex:kv[1].sex||'',notes:kv[1].note||'',email:kv[1].email||''}; });
+      var rows=Object.entries(data).map(function(kv){ return {plate:kv[0],first_name:kv[1].first||'',last_initial:kv[1].last||'',age:kv[1].age||'',sex:kv[1].sex||'',email:kv[1].email||''}; });
       await _sb.from('drivers').upsert(rows);
       _drCache=data;
       renderDrivers();
