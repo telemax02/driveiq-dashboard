@@ -122,6 +122,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <button class="tab active" id="tab-dash" onclick="switchTab('dash')"><i class="ti ti-layout-dashboard" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Dashboard</button>
       <button class="tab" id="tab-lb" onclick="switchTab('lb')"><i class="ti ti-trophy" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--gold);"></i>Weekly Leaderboard</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
+      <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
     </div>
     <span class="badge">Pre-calibration</span>
   </div>
@@ -194,6 +195,227 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     </div>
     <div class="dr-grid" id="dr-grid"></div>
   </div>
+
+  <!-- ══════════════════════════════════════════
+       FAQ VIEW
+  ══════════════════════════════════════════ -->
+  <div id="view-faq" style="display:none;max-width:720px;">
+    <div style="margin-bottom:24px;">
+      <div class="slabel">Frequently Asked Questions</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px;">Everything you need to know about your driving score</div>
+    </div>
+
+    <style>
+      .faq-item{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:10px;overflow:hidden;}
+      .faq-q{width:100%;background:none;border:none;text-align:left;padding:16px 18px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;line-height:1.4;}
+      .faq-q:hover{background:var(--bg3);}
+      .faq-q .faq-icon{font-size:16px;color:var(--text3);transition:transform .2s;flex-shrink:0;}
+      .faq-q.open .faq-icon{transform:rotate(45deg);color:var(--success);}
+      .faq-a{display:none;padding:0 18px 16px;font-size:13px;color:var(--text2);line-height:1.7;}
+      .faq-a.open{display:block;}
+      .faq-a p{margin-bottom:8px;}
+      .faq-a p:last-child{margin-bottom:0;}
+      .faq-a ul{padding-left:18px;margin-bottom:8px;}
+      .faq-a ul li{margin-bottom:4px;}
+      .faq-section-label{font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin:24px 0 10px;}
+      .faq-section-label:first-child{margin-top:0;}
+    </style>
+
+    <div class="faq-section-label">Your Score</div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What is my DriveIQ score?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>Your DriveIQ score is a number out of 100 that reflects the quality of your driving across all your trips. A score of 100 means you drove perfectly — no harsh braking, no harsh acceleration, smooth cornering, and no speeding recorded. The higher your score, the better your driving behaviour.</p>
+        <p>The score shown on the dashboard is your overall average across all trips recorded during the current period, weighted by how far you drove on each trip.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What does my score actually mean?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <ul>
+          <li><strong style="color:var(--success);">95–100 ★★★★★</strong> — Excellent. Outstanding driving across every measure.</li>
+          <li><strong style="color:var(--success);">85–94 ★★★★½</strong> — Excellent. Very strong performance with minor room to improve.</li>
+          <li><strong style="color:var(--info);">75–84 ★★★★☆</strong> — Good. Solid driving with a specific area worth focusing on.</li>
+          <li><strong style="color:var(--info);">65–74 ★★★½☆</strong> — Good. Some consistent habits are affecting the score.</li>
+          <li><strong style="color:var(--warning);">55–64 ★★★☆☆</strong> — Needs improvement. One or more areas need attention.</li>
+          <li><strong style="color:var(--danger);">Below 55 ★★☆☆☆</strong> — Requires attention. Driving habits are creating elevated risk.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How is my score calculated?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>Each trip is measured across four areas of driving behaviour: <strong>Speeding</strong>, <strong>Braking</strong>, <strong>Cornering</strong>, and <strong>Acceleration</strong>. Each area is given a score from 0 to 100, and these are combined into a single trip score.</p>
+        <p>Your overall vehicle score is then calculated as an average across all your trips — but longer trips count for more than shorter ones. This reflects the fact that a 40km drive gives a much more complete picture of your driving than a 3km run to the shops.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Why does my overall score look lower than my individual trip scores?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>Your overall score is a weighted average — longer trips have more influence than shorter ones. So if you had a few lower-scoring long trips and several high-scoring short trips, the long trips will pull your average down more.</p>
+        <p>This is intentional and fair: sustained performance on longer journeys is a better indicator of safe driving habits than a handful of quick, easy trips.</p>
+      </div>
+    </div>
+
+    <div class="faq-section-label">The Four Components</div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What is the Speeding score?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>The Speeding score measures how much you exceeded posted speed limits during a trip, and for how long. A perfect score of 100 means you stayed within the speed limit for the entire trip. The more you exceed the limit — and the longer you do it — the lower this score will be.</p>
+        <p>Speeding is the most heavily weighted component because it has the greatest impact on road safety outcomes.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What is the Braking score?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>The Braking score measures how often you brake harshly — sudden, hard stops compared to smooth, gradual slowing. A score of 100 means no harsh braking events were detected during the trip.</p>
+        <p>Harsh braking is a sign of following too closely, late reaction to hazards, or driving too fast for conditions. Smooth braking protects passengers, reduces wear on the vehicle, and indicates better hazard awareness.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What is the Acceleration score?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>The Acceleration score measures how often you accelerate harshly — flooring the throttle rather than building speed smoothly. A score of 100 means no harsh acceleration events were recorded.</p>
+        <p>Aggressive acceleration increases fuel consumption, puts strain on the drivetrain, and is associated with higher-risk driving styles overall.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What is the Cornering score?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>The Cornering score measures how smoothly you take corners and bends. A score of 100 means all corners were taken smoothly without triggering a harsh event. Harsh cornering is detected when the vehicle experiences lateral force beyond what smooth, controlled driving would produce.</p>
+        <p>Smooth cornering reduces tyre wear, improves passenger comfort, and reduces the risk of losing control.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Why is Speeding sometimes not shown for a trip?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>The Speeding score requires a reliable GPS signal throughout the trip to accurately compare your speed against posted speed limits. If the GPS signal was too weak or unavailable for most of the journey — for example in an underground car park, a tunnel, or a heavily built-up area — the Speeding component is excluded from that trip entirely.</p>
+        <p>When this happens, your trip is still scored fairly on Braking, Cornering and Acceleration. You are never penalised for poor GPS reception.</p>
+      </div>
+    </div>
+
+    <div class="faq-section-label">Trips &amp; History</div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Which trips are included in my score?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>A trip is included in your score if it is at least 3 km long and you were moving for at least 4 minutes. Very short trips don't provide enough driving data to generate a meaningful score, so they are excluded automatically.</p>
+        <p>All trips from 2 June 2026 onwards are included in the current reporting period.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What do Short, Standard, and Long trip labels mean?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <ul>
+          <li><strong>Short trip</strong> — under 10 km</li>
+          <li><strong>Standard</strong> — 10 to 24 km</li>
+          <li><strong>Long trip</strong> — 25 km or more</li>
+        </ul>
+        <p>These labels are shown on each trip card so you can quickly see the type of driving recorded. They also appear in the weekly leaderboard to show the mix of trip types across the fleet.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How often is the dashboard updated?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>The dashboard updates automatically every four hours. New trips completed since the last update will appear the next time the system refreshes. If you have just finished a trip, it may not appear straight away — check back within a few hours.</p>
+      </div>
+    </div>
+
+    <div class="faq-section-label">Incidents &amp; Leaderboard</div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What is a speed incident?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>A speed incident is a serious speeding event that meets all of the following at the same time:</p>
+        <ul>
+          <li>The vehicle was travelling <strong>20 km/h or more over the speed limit</strong></li>
+          <li>This lasted for <strong>30 seconds or more</strong></li>
+          <li>GPS coverage was reliable enough to confirm the reading</li>
+        </ul>
+        <p>All three conditions must be met for an event to be recorded as an incident. Brief or minor speed variations will not trigger an incident flag.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How does the Weekly Leaderboard work?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>The Weekly Leaderboard ranks all vehicles by their average driving score for each calendar week (Monday to Sunday). The vehicle with the highest score for the week takes the top spot.</p>
+        <p>The leaderboard also shows whether each vehicle's score improved, stayed stable, or declined compared to the previous week — so you can track progress over time.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How can I improve my score?
+        <span class="faq-icon">+</span>
+      </button>
+      <div class="faq-a">
+        <p>Check the component scores on your individual trips — whichever area has the lowest star rating is where the most improvement is available. Here are some practical tips:</p>
+        <ul>
+          <li><strong>Speeding:</strong> Use cruise control on highways where possible. Give yourself extra time so you don't feel the need to rush.</li>
+          <li><strong>Braking:</strong> Increase your following distance and scan further ahead. If you can see a hazard early, you have time to brake gently.</li>
+          <li><strong>Acceleration:</strong> Pull away from lights and junctions smoothly. There's rarely a reason to accelerate hard in everyday driving.</li>
+          <li><strong>Cornering:</strong> Slow down before a corner, not during it. Enter bends at a speed where you feel fully in control.</li>
+        </ul>
+        <p>Your dashboard card also shows which single component, if improved, would have the biggest impact on your overall score.</p>
+      </div>
+    </div>
+
+  </div>
+
 </div>
 
 <script>
@@ -222,14 +444,24 @@ let vehicles=[];
 let incData=[];
 let weeksData=[];
 
+// ── FAQ accordion ─────────────────────────────────────────────────────────
+function toggleFaq(btn){
+  var isOpen=btn.classList.contains('open');
+  var allBtns=document.querySelectorAll('.faq-q');
+  allBtns.forEach(function(b){b.classList.remove('open');b.nextElementSibling.classList.remove('open');});
+  if(!isOpen){btn.classList.add('open');btn.nextElementSibling.classList.add('open');}
+}
+
 // ── Tab switching ──────────────────────────────────────────────────────────
 function switchTab(tab){
   document.getElementById('view-dash').style.display    = tab==='dash'?'':'none';
   document.getElementById('view-lb').style.display      = tab==='lb'?'':'none';
   document.getElementById('view-drivers').style.display = tab==='drivers'?'':'none';
+  document.getElementById('view-faq').style.display     = tab==='faq'?'':'none';
   document.getElementById('tab-dash').classList.toggle('active',    tab==='dash');
   document.getElementById('tab-lb').classList.toggle('active',      tab==='lb');
   document.getElementById('tab-drivers').classList.toggle('active', tab==='drivers');
+  document.getElementById('tab-faq').classList.toggle('active',     tab==='faq');
   if(tab==='lb') renderLeaderboard();
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
