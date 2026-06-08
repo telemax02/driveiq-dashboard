@@ -321,7 +321,7 @@ function selectV(plate){
   +'</div>';
 
   v.trips.forEach(function(t){
-    const score=tot(t);
+    const score=(t.total!==undefined?t.total:tot(t));
     const comps=[
       {k:'Speeding',v:t.spd,w:t.lc?null:0.45,mx:45},
       {k:'Braking', v:t.brk,w:t.lc?0.364:0.20,mx:t.lc?36:20},
@@ -364,7 +364,7 @@ function selectV(plate){
       +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">'
         +'<span style="font-size:10px;color:var(--text3);white-space:nowrap;">Total</span>'
         +'<div class="bwrap" style="height:5px;"><div class="bfill" style="width:'+score+'%;background:'+sc(score)+';"></div></div>'
-        +'<span style="font-size:11px;font-weight:500;color:'+sc(score)+';white-space:nowrap;">'+score+'/100</span>'+(t.raw!==score?'<span style="font-size:9px;color:var(--text3);margin-left:4px;">(raw '+t.raw+')</span>':'')
+        +'<span style="font-size:11px;font-weight:500;color:'+sc(score)+';white-space:nowrap;">'+score+'/100</span>'+(tot(t)!==score?'<span style="font-size:9px;color:var(--text3);margin-left:4px;">(driving quality: '+tot(t)+')</span>':'')
       +'</div>';
     card.appendChild(infoDiv);
     let mapDiv=null;
