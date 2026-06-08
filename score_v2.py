@@ -4,7 +4,11 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 TOKEN = os.environ['FLESPI_TOKEN']
 CALC  = os.environ.get('FLESPI_CALC_ID', '2923614')
-TODAY=1780236011; BNE=36000
+BNE=36000
+# Rolling 4-week window: start of the Monday 4 weeks ago (AEST)
+_now_aest = datetime.datetime.utcnow() + datetime.timedelta(seconds=BNE)
+_mon = (_now_aest - datetime.timedelta(days=_now_aest.weekday() + 28)).replace(hour=0, minute=0, second=0, microsecond=0)
+TODAY = int((_mon - datetime.datetime(1970, 1, 1)).total_seconds()) - BNE
 DEVS={6536476:'856KZ4',6605289:'387BX3',6605473:'627KB5',6613713:'136YSI',6711239:'570RSO',6884310:'534JDZ',6884322:'934NQ4',6884325:'WHOOP',7419562:'476NP5',7585062:'344IT2',7734421:'VolvoXC60',7734429:'873BX8',8180103:'498IO7'}
 MAKES={'856KZ4':'Toyota Hilux','387BX3':'GWM Cannon','627KB5':'BYD Seal','136YSI':'Hyundai Elantra','570RSO':'Subaru Forester','534JDZ':'Honda Jazz','934NQ4':'Ford Ranger','WHOOP':'Ford Ranger','476NP5':'Nissan Murano','344IT2':'Ford Ranger','VolvoXC60':'Volvo XC60','873BX8':'Hyundai i30','498IO7':'Toyota Corolla'}
 
@@ -38,7 +42,7 @@ def score_trip(t, fleet_mean):
 
 def fetch(d):
     req=urllib.request.Request(f'https://flespi.io/gw/calcs/{CALC}/devices/{d}/intervals/all',
-        data=json.dumps({'count':15,'reverse':True}).encode(),
+        data=json.dumps({'count':200,'reverse':True}).encode(),
         headers={'Authorization':f'FlespiToken {TOKEN}','Content-Type':'application/json'},method='GET')
     with urllib.request.urlopen(req,timeout=12) as r: return json.load(r).get('result',[])
 
