@@ -884,7 +884,8 @@ function closeTrendModal(){
 // ── Weekly summary modal ────────────────────────────────────────────────────
 function generateWeeklySummary(r){
   var drData=loadDrivers(); var d=drData[r.plate]||{};
-  var n=((d.first||'').trim())||'This driver';
+  var n=((d.first||'').trim())||'';
+  var hi=n?'Hi '+n+', you':'You';
   var t=r.trips, ts=t!==1?'s':'';
 
   var comps=[
@@ -897,93 +898,92 @@ function generateWeeklySummary(r){
   var best=comps[0], worst=comps[comps.length-1];
   var gap=best&&worst?best.val-worst.val:0;
 
-  // deterministic pick index so same driver/week always reads the same
   var pick=((r.score*7+t*3+(r.rank||1)*11))%4;
   function p(arr){return arr[pick%arr.length];}
 
-  // ── Sentence 1: overall + what they're doing well ──────────────────────
+  // ── Sentence 1: overall + what you're doing well ───────────────────────
   var s1;
   if(r.score>=93){
     s1=p([
-      n+' absolutely nailed this week — '+r.score+'/100 across '+t+' trip'+ts+'. That kind of score means clean, controlled driving from start to finish.',
-      'What a week from '+n+': '+r.score+' from '+t+' trip'+ts+'. That puts them at the very top end of the fleet and it shows in every component.',
-      r.score+' from '+t+' trip'+ts+' — '+n+' is setting the bar high this week. That level of consistency across multiple trips is genuinely impressive.',
-      n+' delivered a near-perfect week with '+r.score+' across '+t+' trip'+ts+'. The data shows careful, deliberate driving throughout.'
+      hi+' absolutely nailed this week — '+r.score+'/100 across '+t+' trip'+ts+'. That kind of score means clean, controlled driving from start to finish — be proud of that.',
+      'What a week — '+r.score+' from '+t+' trip'+ts+'. That puts you at the very top end of the fleet and it shows in every single component.',
+      r.score+' from '+t+' trip'+ts+' — you\'re setting the bar high this week. That level of consistency across every trip is genuinely impressive.',
+      hi+' delivered a near-perfect week with '+r.score+' across '+t+' trip'+ts+'. The data shows careful, deliberate driving throughout — exactly what we love to see.'
     ]);
   } else if(r.score>=82){
     s1=p([
-      n+' had a really solid week — '+r.score+' across '+t+' trip'+ts+'. There\'s plenty to be happy about here.',
-      'A strong '+r.score+' from '+n+' this week, spread over '+t+' trip'+ts+'. The driving quality is clearly there.',
-      n+' put in good work this week: '+r.score+' from '+t+' trip'+ts+'. That\'s the kind of score that reflects real effort behind the wheel.',
-      t+' trip'+ts+', '+r.score+' — '+n+' is driving well and it\'s showing up in the numbers.'
+      hi+' had a really solid week — '+r.score+' across '+t+' trip'+ts+'. There\'s plenty to be happy about here.',
+      'A strong '+r.score+' this week across '+t+' trip'+ts+' — the driving quality is clearly there and it\'s showing up in your numbers.',
+      hi+' put in great work this week: '+r.score+' from '+t+' trip'+ts+'. That\'s the kind of score that reflects real effort and awareness behind the wheel.',
+      t+' trip'+ts+', '+r.score+' — you\'re driving well and it\'s coming through in the data. That\'s a result to feel good about.'
     ]);
   } else if(r.score>=68){
     s1=p([
-      n+' scored '+r.score+' across '+t+' trip'+ts+' this week — a decent result with room to push higher.',
-      t+' trip'+ts+' and a '+r.score+' for '+n+' this week. The foundation is there; it\'s about finding that extra edge now.',
-      n+' clocked '+t+' trip'+ts+' and came away with '+r.score+'. Not bad at all — and there\'s a clear path to doing better.',
-      'A '+r.score+' from '+n+' this week across '+t+' trip'+ts+'. Solid enough, but the data shows there\'s more in the tank.'
+      hi+' scored '+r.score+' across '+t+' trip'+ts+' this week — a decent result, and there\'s a clear path to pushing it higher.',
+      t+' trip'+ts+' and a '+r.score+' this week. The foundation is there; it\'s now about finding that extra edge and being intentional on every drive.',
+      hi+' clocked '+t+' trip'+ts+' and came away with '+r.score+'. That\'s not a bad place to be — and the improvements from here are very achievable.',
+      'A '+r.score+' this week across '+t+' trip'+ts+'. The data shows there\'s more in the tank, and we\'re confident you can get there.'
     ]);
   } else {
     s1=p([
-      n+' scored '+r.score+' from '+t+' trip'+ts+' this week — a tough week on the numbers, but the key is what comes next.',
-      t+' trip'+ts+' and a '+r.score+' this week for '+n+'. There\'s a lot of room to move, and the good news is the improvements are very achievable.',
-      n+' had a difficult week scoring-wise at '+r.score+', but every number in this report is something that can be improved with small habit changes.',
-      'A '+r.score+' from '+n+' this week. The score reflects some specific driving habits that, once addressed, could shift things quickly.'
+      hi+' scored '+r.score+' from '+t+' trip'+ts+' this week — a tough week on the numbers, but what matters most is what you do next.',
+      t+' trip'+ts+' and a '+r.score+' this week. There\'s a lot of room to move, and the good news is every improvement here is very achievable with small, focused changes.',
+      hi+' had a challenging week scoring-wise at '+r.score+', but every number in this report is something you can directly improve — none of this is out of reach.',
+      'A '+r.score+' this week from '+t+' trip'+ts+'. Your score reflects a few specific driving habits that, once adjusted, could shift things quickly.'
     ]);
   }
   if(best&&best.val>=87){
     var strengthLines={
-      speeding:[' Staying within the speed limits so consistently is a genuine standout.',' The speeding score of '+best.val+' shows real discipline on the road.',' Speeding control at '+best.val+'/100 is something many drivers struggle with — great work there.'],
-      braking:[' Smooth, controlled braking at '+best.val+'/100 is one of the clearest signs of a safe driver.',' The braking score of '+best.val+' stands out — that kind of smoothness reduces wear and keeps passengers comfortable.',' Braking at '+best.val+' shows great awareness of what\'s ahead — that\'s a skill worth holding onto.'],
-      acceleration:[' Acceleration at '+best.val+'/100 shows a calm, unhurried approach to driving that makes a real difference.',' Smooth acceleration ('+best.val+') means less stress on the vehicle and a safer ride for everyone.',' That '+best.val+' acceleration score reflects patience and good throttle control.'],
-      cornering:[' Cornering at '+best.val+' is excellent — reading the road well through bends is something that comes with real skill and care.',' A '+best.val+' cornering score shows great technique through turns — that level of control is not easy to achieve.',' The cornering score of '+best.val+' is a highlight this week — smooth through the bends every time.']
+      speeding:[' Staying within the speed limits as consistently as you did is a real standout — not everyone manages that.',' Your speeding score of '+best.val+'/100 shows genuine discipline on the road — that\'s something to keep building on.',' Speeding control at '+best.val+' is something a lot of drivers struggle with, so the fact that you\'re nailing it is worth acknowledging.'],
+      braking:[' Your smooth, controlled braking at '+best.val+'/100 is one of the clearest signs of a safe, aware driver.',' A braking score of '+best.val+' stands out — that kind of smoothness is better for the vehicle and makes every trip safer for everyone in the car.',' Your braking at '+best.val+' shows great road awareness — you\'re reading what\'s ahead and that\'s a skill worth holding onto.'],
+      acceleration:[' Your acceleration score of '+best.val+'/100 shows a calm, unhurried approach to driving — that kind of patience makes a real difference.',' Smooth acceleration at '+best.val+' means less stress on the vehicle and a safer, more comfortable ride — you\'re getting that right.',' That '+best.val+' acceleration score reflects real patience and good throttle control — it\'s a habit that pays off.'],
+      cornering:[' Your cornering at '+best.val+'/100 is excellent — reading the road well through bends takes real skill and you\'re showing it.',' A '+best.val+' cornering score shows great technique through turns — that level of control isn\'t easy to achieve and you should be proud of it.',' Your cornering score of '+best.val+' is a highlight this week — smooth through the bends every time, and it shows.']
     };
-    var sl=strengthLines[best.name]||[' '+best.label+' at '+best.val+'/100 is a clear strength.'];
+    var sl=strengthLines[best.name]||[' Your '+best.label.toLowerCase()+' at '+best.val+'/100 is a clear strength this week.'];
     s1+=sl[pick%sl.length];
   }
 
-  // ── Sentence 2: what's pulling the score down ──────────────────────────
+  // ── Sentence 2: what's pulling your score down ─────────────────────────
   var s2;
   var improveTips={
     speeding:[
-      'The speeding score of '+worst.val+'/100 is the biggest drag on the overall result — even small reductions in excess speed add up quickly over a week of trips.',
-      'Speeding ('+worst.val+'/100) is where the most points are being lost. Leaving a little more time for each journey means there\'s less reason to push the speed limit.',
-      'At '+worst.val+'/100, speeding is the clearest area to target. GPS data shows specific stretches where speed tends to creep — staying mindful there will make a noticeable difference.'
+      'Your speeding score of '+worst.val+'/100 is the biggest drag on your overall result this week — even small reductions in excess speed add up quickly across your trips.',
+      'Speeding is where you\'re losing the most points this week at '+worst.val+'/100. Giving yourself a little more time for each journey means there\'s less pressure to push past the limit.',
+      'At '+worst.val+'/100, speeding is your clearest area to target. There are specific stretches in your trips where speed tends to creep — staying mindful there will make a noticeable difference to your score.'
     ],
     braking:[
-      'Braking at '+worst.val+'/100 is the main thing pulling the score down — increasing following distance is the single biggest fix, as it removes the need for sharp stops.',
-      'The '+worst.val+' braking score suggests some reactive stopping moments this week. Reading the traffic further ahead and covering the brake earlier would smooth this out.',
-      'Harsh braking events ('+worst.val+'/100) are costing points here. A two-second buffer from the car ahead means the brake pedal rarely needs to be hit hard.'
+      'Your braking score of '+worst.val+'/100 is the main thing holding your score back — building a bigger gap to the car ahead is the single biggest fix, as it removes the need for those sharp stops.',
+      'Braking at '+worst.val+' suggests some reactive stops this week. Try reading the traffic further ahead and covering the brake a beat earlier — it smooths everything out and your score will show it.',
+      'Those harsh braking moments ('+worst.val+'/100) are costing you points. A two-second buffer from the car in front means you rarely have to hit the brakes hard — that one habit can lift your score significantly.'
     ],
     acceleration:[
-      'Acceleration is sitting at '+worst.val+'/100 this week — building speed more gradually, especially from traffic lights and roundabouts, would quickly lift that number.',
-      'The acceleration score of '+worst.val+' shows some sharp throttle moments. Thinking a beat ahead and rolling onto the accelerator rather than pressing hard makes a big difference.',
-      'At '+worst.val+'/100, acceleration is where the score is leaking. Smooth, measured starts — particularly in stop-start traffic — are the fastest route to improvement here.'
+      'Your acceleration score of '+worst.val+'/100 is where you\'re leaving points on the table — building speed more gradually, especially from lights and roundabouts, would lift that number quickly.',
+      'Acceleration at '+worst.val+' shows some sharp throttle moments in your trips this week. Roll onto the accelerator rather than pressing hard, and think a beat ahead — it makes a bigger difference than you might expect.',
+      'At '+worst.val+'/100, acceleration is where your score is leaking. Smooth, measured starts — particularly in stop-start traffic — are the fastest way to bring that number up.'
     ],
     cornering:[
-      'Cornering at '+worst.val+'/100 is the area to focus on. Slowing to the right speed before the turn rather than mid-corner is the key adjustment.',
-      'The cornering score of '+worst.val+' points to some corners being taken at slightly too much speed. Trail-braking into turns rather than relying on the corner itself is a habit worth building.',
-      'Cornering ('+worst.val+'/100) is the weakest link this week. Spotting the turn earlier and setting the speed before entry will bring that score up noticeably.'
+      'Your cornering score of '+worst.val+'/100 is the area to focus on. The key adjustment is slowing to the right speed before the turn rather than mid-corner — once you build that habit, the score moves.',
+      'Cornering at '+worst.val+' suggests a few corners taken at slightly too much speed this week. Try to set your entry speed earlier, before the turn, rather than relying on the corner to scrub it off.',
+      'Cornering ('+worst.val+'/100) is your weakest link this week. Spotting turns earlier and getting your speed right on approach rather than in the corner will bring that score up noticeably.'
     ]
   };
 
   if(worst&&worst.val<72){
-    var tArr=improveTips[worst.name]||['Focus on '+worst.label.toLowerCase()+' ('+worst.val+'/100) for the biggest gains.'];
+    var tArr=improveTips[worst.name]||['Your '+worst.label.toLowerCase()+' score of '+worst.val+'/100 is where the biggest gains are waiting — that\'s the area to focus on this week.'];
     s2=tArr[pick%tArr.length];
   } else if(worst&&worst.val<86){
     s2=p([
-      'All four components are in decent shape, though '+worst.label.toLowerCase()+' at '+worst.val+'/100 is the one with the most room to grow — dialling that in will push the overall score noticeably.',
-      'There\'s no single weak point dragging things down — '+worst.label.toLowerCase()+' ('+worst.val+') is the softest of the four, and bringing it closer to the others would lift the total meaningfully.',
-      worst.label+' at '+worst.val+'/100 is the main lever to pull. It doesn\'t take much to move that number — a more deliberate approach on just a few trips can shift it.',
-      'The gap between the best and weakest component this week is '+(gap)+' points. Closing that gap — particularly around '+worst.label.toLowerCase()+' — is where the score growth will come from.'
+      'All four components are in good shape — your '+worst.label.toLowerCase()+' at '+worst.val+'/100 is the softest of the four, and dialling that in would push your overall score noticeably higher.',
+      'There\'s no single weak point dragging you down — your '+worst.label.toLowerCase()+' ('+worst.val+') is the one with the most room to grow, and bringing it closer to your other scores would lift your total meaningfully.',
+      'Your '+worst.label.toLowerCase()+' score of '+worst.val+'/100 is the main lever to pull right now. It doesn\'t take much to move that number — a more deliberate approach on just a few trips can shift it.',
+      'The gap between your strongest and weakest component is '+gap+' points this week. Closing that gap around '+worst.label.toLowerCase()+' is where your score growth will come from.'
     ]);
   } else {
     s2=p([
-      'All components are strong this week — the challenge now shifts from fixing weaknesses to maintaining this level across every single trip, not just the good ones.',
-      'With everything scoring this well, the path higher isn\'t about fixing problems — it\'s about eliminating the occasional off moment that clips a score down.',
-      'There\'s no obvious weak spot in the data this week, which is a great position to be in. The focus now is repeatability — doing this again next week is the goal.',
-      'Every component is performing well, which means consistency is the only remaining variable. Treating every trip — short or long — with the same care keeps the numbers high.'
+      'All your components are firing well this week — the challenge now shifts from fixing weaknesses to maintaining this across every single trip, not just the good ones.',
+      'With everything scoring this well, the path higher isn\'t about fixing problems — it\'s about eliminating the occasional off moment that clips your score down.',
+      'There\'s no obvious weak spot in your data this week, which is a great position to be in. The focus now is repeatability — doing this again next week is the real goal.',
+      'Every component is performing well for you this week, which means consistency is the only remaining variable. Treating every trip — short or long — with the same care will keep your numbers high.'
     ]);
   }
 
@@ -991,24 +991,24 @@ function generateWeeklySummary(r){
   var s3;
   if(r.trend==='improving'){
     s3=p([
-      'The upward trend says it all — '+n+' is actively getting safer behind the wheel, and that\'s worth acknowledging. Keep pushing and the leaderboard will reflect it.',
-      'Scores are heading in the right direction, and that improvement didn\'t happen by accident — it takes real effort and awareness. That momentum is the most valuable thing in this report.',
-      'An improving trend on top of this week\'s result is a great sign. Safe driving is a habit, and '+n+' is clearly building one.',
-      'The trend arrow is pointing up and the score backs it up. That combination shows genuine development as a driver — stay focused and this will only continue.'
+      'Your upward trend says it all — you\'re actively becoming a safer driver, and that\'s genuinely worth acknowledging. Keep pushing and the leaderboard will keep reflecting it.',
+      'Your scores are heading in the right direction, and that improvement didn\'t happen by accident — it takes real effort and awareness behind the wheel. That momentum is the most valuable thing in this report.',
+      'An improving trend on top of this week\'s result is a great sign. Safe driving is a habit, and you\'re clearly building one — keep going.',
+      'Your trend arrow is pointing up and the score backs it up. That combination shows genuine development as a driver — stay focused and this will only continue.'
     ]);
   } else if(r.trend==='declining'){
     s3=p([
-      'The dip in scores this week is worth noting, but it\'s one week — not a pattern. A reset in focus for the next few trips can turn this around quickly.',
-      'Scores have slipped slightly compared to recent weeks, but the potential shown earlier is still there. One focused, deliberate week is all it takes to bounce back.',
-      'A slight downward trend this week, but nothing that a couple of clean, mindful trips won\'t fix. Every drive is an opportunity to improve the average.',
-      'The declining trend is a nudge rather than a verdict — it just means it\'s a good moment to recalibrate and be intentional about the next few drives.'
+      'The dip in your scores this week is worth noting, but it\'s one week — not a pattern. A reset in focus for your next few drives can turn this around quickly.',
+      'Your scores have slipped slightly compared to recent weeks, but the potential you\'ve shown is still very much there. One focused, deliberate week is all it takes to bounce back.',
+      'A slight downward trend this week, but nothing that a couple of clean, mindful trips won\'t fix. Every drive is a fresh opportunity to bring your average back up.',
+      'Think of the declining trend as a nudge rather than a verdict — it\'s a good moment to recalibrate and go into your next few drives with clear intent.'
     ]);
   } else {
     s3=p([
-      'Holding steady week on week is underrated — it means the good habits are sticking. The next step is finding those small gains that push the score into a new tier.',
-      'Consistency like this is what separates reliable, safe drivers from the rest of the fleet. The score will grow as those habits become second nature.',
-      'A stable trend shows that the good driving is not a fluke — it\'s becoming the norm. That\'s a solid foundation to build on.',
-      n+' is showing real steadiness in the data. The next leap in score usually comes from one or two specific focus areas rather than an overall overhaul — the base is already strong.'
+      'Holding steady week on week is underrated — it means your good habits are sticking. The next step is finding those small gains that push your score into a new tier.',
+      'Consistency like yours is what separates reliable, safe drivers from the rest of the fleet. Keep at it and the score will grow as those habits become second nature.',
+      'A stable trend shows your good driving isn\'t a fluke — it\'s becoming your normal. That\'s a solid foundation to keep building on.',
+      'You\'re showing real steadiness in the data week after week. The next leap in your score usually comes from one or two specific focus areas rather than an overall overhaul — your base is already strong.'
     ]);
   }
 
