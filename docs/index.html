@@ -8,8 +8,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
 :root{--bg:#1e1e1c;--bg2:#2a2a27;--bg3:#333330;--text:#f0efeb;--text2:#b4b2a9;--text3:#6b6a64;--border:rgba(255,255,255,0.10);--success:#97c459;--success-bg:#27500a;--info:#85b7eb;--info-bg:#0c447c;--warning:#EF9F27;--warning-bg:#633806;--danger:#ef4444;--danger-bg:#791f1f;--gold:#EF9F27;--radius:8px;--radius-lg:12px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -31,7 +29,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .slabel{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
 .rank-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--radius);cursor:pointer;border:0.5px solid transparent;transition:background .15s;}
 .rank-row:hover{background:var(--bg2);} .rank-row.active{background:var(--bg2);border-color:var(--border);}
-.bwrap{flex:1;height:3px;background:transparent;border-radius:2px;overflow:hidden;} .bfill{height:100%;border-radius:2px;}
+.bwrap{flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;} .bfill{height:100%;border-radius:2px;}
 .trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;}
 .comps{display:flex;gap:6px;} .comp{text-align:center;flex:1;}
 .comp .ck{font-size:10px;color:var(--text3);} .comp .cv{font-size:13px;font-weight:500;margin-top:2px;} .comp .cs{font-size:9px;color:var(--gold);margin-top:1px;}
@@ -61,11 +59,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:28px;padding:0 10px;}
 .podium-slot{flex:1;max-width:220px;text-align:center;}
 .podium-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 12px 12px;position:relative;}
-.podium-card.p1{border:1.5px solid rgba(239,159,39,0.75);border-top:3px solid #EF9F27;box-shadow:0 0 36px rgba(239,159,39,0.25),0 6px 24px rgba(0,0,0,0.5);background:linear-gradient(175deg,rgba(239,159,39,0.1) 0%,var(--bg2) 50%);}
-.podium-card.p2{border:1px solid rgba(192,192,192,0.5);border-top:2px solid rgba(192,192,192,0.75);box-shadow:0 0 22px rgba(192,192,192,0.15),0 4px 18px rgba(0,0,0,0.4);background:linear-gradient(175deg,rgba(192,192,192,0.07) 0%,var(--bg2) 50%);}
-.podium-card.p3{border:1px solid rgba(176,120,76,0.5);border-top:2px solid rgba(176,120,76,0.75);box-shadow:0 0 22px rgba(176,120,76,0.15),0 4px 18px rgba(0,0,0,0.4);background:linear-gradient(175deg,rgba(176,120,76,0.07) 0%,var(--bg2) 50%);}
+.podium-card.p1{border-color:rgba(239,159,39,0.4);box-shadow:0 0 20px rgba(239,159,39,0.08);}
+.podium-card.p2{border-color:rgba(192,192,192,0.25);}
+.podium-card.p3{border-color:rgba(176,120,76,0.25);}
 .podium-medal{font-size:28px;display:block;margin-bottom:6px;}
-.podium-card.p1 .podium-medal{font-size:36px;}
 .podium-plate{font-size:15px;font-weight:600;margin-bottom:2px;}
 .podium-make{font-size:11px;color:var(--text3);margin-bottom:10px;}
 .podium-score{font-size:36px;font-weight:500;}
@@ -80,18 +77,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .week-nav button:hover{background:var(--bg3);}
 .week-nav button:disabled{opacity:0.3;cursor:default;}
 #week-label{font-size:13px;font-weight:500;color:var(--text2);}
-.lb-list-header{display:grid;grid-template-columns:36px 1fr 60px 72px 64px 90px 72px 66px;gap:6px;align-items:center;padding:6px 10px;margin-bottom:4px;}
+.lb-list-header{display:grid;grid-template-columns:36px 1fr 60px 44px 44px 44px 44px 30px;gap:6px;align-items:center;padding:6px 10px;margin-bottom:4px;}
 .lb-list-header span{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
 .lb-list-header span.right{text-align:right;}
-.lb-row{display:grid;grid-template-columns:36px 1fr 60px 72px 64px 90px 72px 66px;gap:6px;align-items:center;padding:9px 10px;border-radius:var(--radius);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:5px;transition:background .15s;}
+.lb-row{display:grid;grid-template-columns:36px 1fr 60px 44px 44px 44px 44px 30px;gap:6px;align-items:center;padding:9px 10px;border-radius:var(--radius);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:5px;transition:background .15s;}
 .lb-row:hover{background:var(--bg3);}
 .lb-row.top{border-color:rgba(239,159,39,0.3);}
 .rk{font-size:13px;font-weight:500;color:var(--text3);text-align:center;}
 .rk.medal{font-size:16px;}
 .sc-cell{font-size:18px;font-weight:500;text-align:right;}
 .comp-cell{font-size:12px;font-weight:500;text-align:right;}
-.trend-cell{display:flex;align-items:center;justify-content:center;gap:4px;}
-@media(max-width:700px){.main{grid-template-columns:1fr;}.stats{grid-template-columns:1fr;}.lb-list-header,.lb-row{grid-template-columns:30px 1fr 52px 64px 60px 28px;}.hide-m{display:none;}}
+.trend-cell{text-align:center;font-size:15px;}
+@media(max-width:700px){.main{grid-template-columns:1fr;}.stats{grid-template-columns:1fr;}.lb-list-header,.lb-row{grid-template-columns:30px 1fr 52px 40px 40px 28px;}.hide-m{display:none;}}
 /* ── Drivers ── */
 .dr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
 .dr-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;}
@@ -109,35 +106,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .dr-saved{font-size:10px;color:var(--success);opacity:0;transition:opacity .4s;margin-top:6px;height:14px;}
 .dr-saved.show{opacity:1;}
 .dr-name-tag{font-size:11px;color:var(--text2);margin-top:1px;}
-.tf-btn{font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;border:0.5px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;transition:background .15s,color .15s;}
-.tf-btn:hover{background:var(--bg2);color:var(--text2);}
-.tf-btn.tf-active{background:var(--info-bg);color:var(--info);border-color:var(--info);}
-@keyframes pulse-p1{0%{box-shadow:0 0 0 0 rgba(239,159,39,0);}50%{box-shadow:0 0 12px 3px rgba(239,159,39,0.18);}100%{box-shadow:0 0 0 0 rgba(239,159,39,0);}}
-@keyframes pulse-p2{0%{box-shadow:0 0 0 0 rgba(192,192,192,0);}50%{box-shadow:0 0 12px 3px rgba(192,192,192,0.22);}100%{box-shadow:0 0 0 0 rgba(192,192,192,0);}}
-@keyframes pulse-p3{0%{box-shadow:0 0 0 0 rgba(176,120,76,0);}50%{box-shadow:0 0 12px 3px rgba(176,120,76,0.22);}100%{box-shadow:0 0 0 0 rgba(176,120,76,0);}}
-.lb-row-p1{animation:pulse-p1 1.4s ease-in-out 3;}
-.lb-row-p2{animation:pulse-p2 1.4s ease-in-out 3;}
-.lb-row-p3{animation:pulse-p3 1.4s ease-in-out 3;}
-.chart-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:6px;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,color .15s,border-color .15s;}
-.chart-btn:hover{background:var(--bg2);color:var(--info);border-color:var(--info);}
 </style>
 </head>
 <body>
 <div class="page">
   <!-- ── Header ── -->
   <div class="header">
-    <div style="line-height:1.1;">
-      <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;">
-        <span style="color:#c8c7c2;">Drive</span><span style="color:var(--success);">IQ</span>
-      </div>
-      <div style="border-top:1.5px solid var(--success);margin-top:3px;padding-top:3px;font-size:9px;font-weight:600;letter-spacing:0.18em;color:var(--text3);text-transform:uppercase;">Intelligent Driving Analytics</div>
-    </div>
+    <h1>DriveIQ <span style="font-size:13px;font-weight:400;color:var(--text2);">— Intelligent Driving Analytics</span></h1>
     <div class="tabs">
       <button class="tab active" id="tab-dash" onclick="switchTab('dash')"><i class="ti ti-layout-dashboard" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Dashboard</button>
       <button class="tab" id="tab-lb" onclick="switchTab('lb')"><i class="ti ti-trophy" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--gold);"></i>Weekly Leaderboard</button>
-      <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
     </div>
+    <span class="badge">Pre-calibration</span>
   </div>
 
   <!-- ══════════════════════════════════════════
@@ -145,7 +126,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   ══════════════════════════════════════════ -->
   <div id="view-dash">
     <div class="stats">
-      <div class="stat" id="fleet-avg-card" style="display:flex;gap:14px;align-items:flex-start;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div id="s-avg-stars" style="font-size:11px;letter-spacing:0.5px;">&#9733;&#9733;&#9733;&#9733;&#9734;</div><span id="s-trend"></span></div></div><div id="fleet-comp-avgs" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:5px;align-self:stretch;padding-top:6px;"></div></div>
+      <div class="stat" id="fleet-avg-card" style="display:flex;gap:14px;align-items:flex-start;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div style="font-size:11px;color:var(--gold);">&#9733;&#9733;&#9733;&#9733;&#9734;</div><span id="s-trend"></span></div></div><div id="tier-breakdown" style="flex:1;padding-top:20px;"></div></div>
       <div class="stat"><div class="lbl">Scored trips</div><div class="val" id="s-trips">—</div><div class="sub"><span class="s-range">—</span> &middot; <span style="color:var(--text2);font-weight:600;"><span id="s-vehs">—</span></span> <span style="color:var(--text2);font-weight:600;">Active</span></div></div>
       <div style="align-self:flex-end;padding-bottom:10px;text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Last updated</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-updated">—</div></div>
     </div>
@@ -153,8 +134,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <div><div class="slabel">Vehicle ranking &mdash; click to view trips</div><div id="ranking"></div></div>
       <div><div class="slabel" id="trip-label">Select a vehicle</div>
       <div id="vehicle-summary"></div>
-      <div id="trip-filters" style="display:none;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;"><span style="font-size:10px;color:var(--text3);margin-right:2px;">Filter:</span><button class="tf-btn tf-active" data-f="all" onclick="setTripFilter('all')">All</button><button class="tf-btn" data-f="short" onclick="setTripFilter('short')">Short</button><button class="tf-btn" data-f="standard" onclick="setTripFilter('standard')">Standard</button><button class="tf-btn" data-f="long" onclick="setTripFilter('long')">Long</button><span style="font-size:10px;color:var(--text3);margin-left:6px;">Sort:</span><button class="tf-btn tf-active" data-s="date" onclick="setTripSort('date')">Date</button><button class="tf-btn" data-s="score" onclick="setTripSort('score')">Score</button></div>
-      <div id="trips" style="max-height:615px;overflow-y:auto;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;"><div class="empty"><i class="ti ti-car" style="font-size:22px;display:block;margin-bottom:8px;color:var(--text3);"></i><div style="font-weight:500;margin-bottom:4px;">Select a vehicle</div><div style="font-size:11px;color:var(--text3);">Choose any vehicle from the ranking to view its full trip history and scores.</div></div></div></div>
+      <div id="trips" style="max-height:615px;overflow-y:auto;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;"><div class="empty"><i class="ti ti-arrow-left" style="font-size:18px;display:block;margin-bottom:8px;"></i>Click a vehicle to see all trips</div></div></div>
     </div>
   </div>
 
@@ -172,10 +152,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <span></span>
       <span>Vehicle</span>
       <span class="right hide-m">Score</span>
-      <span class="right">Speeding</span>
-      <span class="right">Braking</span>
-      <span class="right hide-m">Acceleration</span>
-      <span class="right hide-m">Cornering</span>
+      <span class="right">Spd</span>
+      <span class="right">Brk</span>
+      <span class="right hide-m">Acc</span>
+      <span class="right hide-m">Crn</span>
       <span></span>
     </div>
     <div id="lb-list"></div>
@@ -209,188 +189,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     </div>
     <div class="dr-grid" id="dr-grid"></div>
   </div>
-
-  <!-- ══════════════════════════════════════════
-       FAQ VIEW
-  ══════════════════════════════════════════ -->
-  <div id="view-faq" style="display:none;max-width:720px;">
-    <div style="margin-bottom:24px;">
-      <div class="slabel">Frequently Asked Questions</div>
-      <div style="font-size:12px;color:var(--text3);margin-top:2px;">Everything you need to know about your driving score</div>
-    </div>
-
-    <style>
-      .faq-item{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:10px;overflow:hidden;}
-      .faq-q{width:100%;background:none;border:none;text-align:left;padding:16px 18px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;line-height:1.4;}
-      .faq-q:hover{background:var(--bg3);}
-      .faq-q .faq-icon{font-size:16px;color:var(--text3);transition:transform .2s;flex-shrink:0;}
-      .faq-q.open .faq-icon{transform:rotate(45deg);color:var(--success);}
-      .faq-a{display:none;padding:0 18px 16px;font-size:13px;color:var(--text2);line-height:1.7;}
-      .faq-a.open{display:block;}
-      .faq-a p{margin-bottom:8px;}
-      .faq-a p:last-child{margin-bottom:0;}
-      .faq-a ul{padding-left:18px;margin-bottom:8px;}
-      .faq-a ul li{margin-bottom:4px;}
-      .faq-section-label{font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin:24px 0 10px;}
-      .faq-section-label:first-child{margin-top:0;}
-    </style>
-
-    <div class="faq-section-label">Your Score</div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        What is my DriveIQ score?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>Your DriveIQ score is a number out of 100 that reflects the quality of your driving across all your trips. A score of 100 means you drove perfectly — no harsh braking, no harsh acceleration, smooth cornering, and no speeding recorded. The higher your score, the better your driving behaviour.</p>
-        <p>The score shown on the dashboard is your overall average across all trips recorded during the current period, weighted by how far you drove on each trip.</p>
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        What does my score actually mean?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <ul>
-          <li><strong style="color:var(--success);">95–100 ★★★★★</strong> — Excellent. Outstanding driving across every measure.</li>
-          <li><strong style="color:var(--success);">85–94 ★★★★½</strong> — Excellent. Very strong performance with minor room to improve.</li>
-          <li><strong style="color:var(--info);">75–84 ★★★★☆</strong> — Good. Solid driving with a specific area worth focusing on.</li>
-          <li><strong style="color:var(--info);">65–74 ★★★½☆</strong> — Good. Some consistent habits are affecting the score.</li>
-          <li><strong style="color:var(--warning);">55–64 ★★★☆☆</strong> — Needs improvement. One or more areas need attention.</li>
-          <li><strong style="color:var(--danger);">Below 55 ★★☆☆☆</strong> — Requires attention. Driving habits are creating elevated risk.</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        How is my score calculated?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>Each trip is measured across four areas of driving behaviour: <strong>Speeding</strong>, <strong>Braking</strong>, <strong>Cornering</strong>, and <strong>Acceleration</strong>. Each area is given a score from 0 to 100, and these are combined into a single trip score.</p>
-        <p>Your overall vehicle score is then calculated as an average across all your trips — but longer trips count for more than shorter ones. This reflects the fact that a 40km drive gives a much more complete picture of your driving than a 3km run to the shops.</p>
-      </div>
-    </div>
-
-    <div class="faq-section-label">The Four Components</div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        What is the Speeding score?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>The Speeding score measures how much you exceeded posted speed limits during a trip, and for how long. A perfect score of 100 means you stayed within the speed limit for the entire trip. The more you exceed the limit — and the longer you do it — the lower this score will be.</p>
-        <p>Speeding is the most heavily weighted component because it has the greatest impact on road safety outcomes.</p>
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        What is the Braking score?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>The Braking score measures how often you brake harshly — sudden, hard stops compared to smooth, gradual slowing. A score of 100 means no harsh braking events were detected during the trip.</p>
-        <p>Harsh braking is a sign of following too closely, late reaction to hazards, or driving too fast for conditions. Smooth braking protects passengers, reduces wear on the vehicle, and indicates better hazard awareness.</p>
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        What is the Acceleration score?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>The Acceleration score measures how often you accelerate harshly — flooring the throttle rather than building speed smoothly. A score of 100 means no harsh acceleration events were recorded.</p>
-        <p>Aggressive acceleration increases fuel consumption, puts strain on the drivetrain, and is associated with higher-risk driving styles overall.</p>
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        What is the Cornering score?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>The Cornering score measures how smoothly you take corners and bends. A score of 100 means all corners were taken smoothly without triggering a harsh event. Harsh cornering is detected when the vehicle experiences lateral force beyond what smooth, controlled driving would produce.</p>
-        <p>Smooth cornering reduces tyre wear, improves passenger comfort, and reduces the risk of losing control.</p>
-      </div>
-    </div>
-
-    <div class="faq-section-label">Trips &amp; History</div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        Which trips are included in my score?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>A trip is included in your score if it is at least 3 km long and you were moving for at least 4 minutes. Very short trips don't provide enough driving data to generate a meaningful score, so they are excluded automatically.</p>
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        What do Short, Standard, and Long trip labels mean?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <ul>
-          <li><strong>Short trip</strong> — under 10 km</li>
-          <li><strong>Standard</strong> — 10 to 24 km</li>
-          <li><strong>Long trip</strong> — 25 km or more</li>
-        </ul>
-        <p>These labels are shown on each trip card so you can quickly see the type of driving recorded. They also appear in the weekly leaderboard to show the mix of trip types across the fleet.</p>
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        How often is the dashboard updated?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>The dashboard updates automatically every four hours. New trips completed since the last update will appear the next time the system refreshes. If you have just finished a trip, it may not appear straight away — check back within a few hours.</p>
-      </div>
-    </div>
-
-    <div class="faq-section-label">Leaderboard</div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        How does the Weekly Leaderboard work?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>The Weekly Leaderboard ranks all vehicles by their average driving score for each calendar week (Monday to Sunday). The vehicle with the highest score for the week takes the top spot.</p>
-        <p>The leaderboard also shows whether each vehicle's score improved, stayed stable, or declined compared to the previous week — so you can track progress over time.</p>
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="toggleFaq(this)">
-        How can I improve my score?
-        <span class="faq-icon">+</span>
-      </button>
-      <div class="faq-a">
-        <p>Check the component scores on your individual trips — whichever area has the lowest star rating is where the most improvement is available. Here are some practical tips:</p>
-        <ul>
-          <li><strong>Speeding:</strong> Use cruise control on highways where possible. Give yourself extra time so you don't feel the need to rush.</li>
-          <li><strong>Braking:</strong> Increase your following distance and scan further ahead. If you can see a hazard early, you have time to brake gently.</li>
-          <li><strong>Acceleration:</strong> Pull away from lights and junctions smoothly. There's rarely a reason to accelerate hard in everyday driving.</li>
-          <li><strong>Cornering:</strong> Slow down before a corner, not during it. Enter bends at a speed where you feel fully in control.</li>
-        </ul>
-        <p>Your dashboard card also shows which single component, if improved, would have the biggest impact on your overall score.</p>
-      </div>
-    </div>
-
-  </div>
-
 </div>
 
 <script>
@@ -409,7 +207,6 @@ function driverInitials(d){ var f=(d.first||'').trim(),l=(d.last||'').trim(); re
 const GOLD='#EF9F27';
 function sc(s){if(s>=90)return'var(--success)';if(s>=70)return'var(--info)';if(s>=50)return'var(--warning)';return'var(--danger)';}
 function stars(s){if(s>=90)return'★★★★★';if(s>=80)return'★★★★☆';if(s>=70)return'★★★☆☆';if(s>=60)return'★★☆☆☆';return'★☆☆☆☆';}
-function starsHalf(s){var v=Math.round(s/10)/2;var f=Math.floor(v);var h=(v%1!==0)?1:0;var e=5-f-h;var c=sc(s);var o='';for(var i=0;i<f;i++)o+='<span style="color:'+c+';">★</span>';if(h)o+='<span style="color:'+c+';opacity:0.4;">★</span>';for(var j=0;j<e;j++)o+='<span style="color:var(--text3);">☆</span>';return o;}
 function tot(t){if(t.lc)return Math.round(0.364*t.brk+0.364*t.crn+0.273*t.acc);return Math.round(0.45*t.spd+0.20*t.brk+0.20*t.crn+0.15*t.acc);}
 function tripSize(km){if(km<10)return'short';if(km>=25)return'long';return'standard';}
 function trendIcon(t,sz){sz=sz||13;if(t==='improving')return'<i class="ti ti-trending-up" style="font-size:'+sz+'px;color:var(--success);" title="Improving"></i>';if(t==='declining')return'<i class="ti ti-trending-down" style="font-size:'+sz+'px;color:var(--danger);" title="Declining"></i>';if(t==='stable')return'<i class="ti ti-minus" style="font-size:'+sz+'px;color:var(--text3);" title="Stable"></i>';return'<span style="color:var(--text3);font-size:10px;">—</span>';}
@@ -419,55 +216,21 @@ let vehicles=[];
 let incData=[];
 let weeksData=[];
 
-// ── FAQ accordion ─────────────────────────────────────────────────────────
-function toggleFaq(btn){
-  var isOpen=btn.classList.contains('open');
-  var allBtns=document.querySelectorAll('.faq-q');
-  allBtns.forEach(function(b){b.classList.remove('open');b.nextElementSibling.classList.remove('open');});
-  if(!isOpen){btn.classList.add('open');btn.nextElementSibling.classList.add('open');}
-}
-
 // ── Tab switching ──────────────────────────────────────────────────────────
 function switchTab(tab){
   document.getElementById('view-dash').style.display    = tab==='dash'?'':'none';
   document.getElementById('view-lb').style.display      = tab==='lb'?'':'none';
   document.getElementById('view-drivers').style.display = tab==='drivers'?'':'none';
-  document.getElementById('view-faq').style.display     = tab==='faq'?'':'none';
   document.getElementById('tab-dash').classList.toggle('active',    tab==='dash');
   document.getElementById('tab-lb').classList.toggle('active',      tab==='lb');
   document.getElementById('tab-drivers').classList.toggle('active', tab==='drivers');
-  document.getElementById('tab-faq').classList.toggle('active',     tab==='faq');
-  if(tab==='lb'){ renderLeaderboard(); setTimeout(triggerPodiumConfetti,180); }
+  if(tab==='lb') renderLeaderboard();
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
 }
 
-function triggerPodiumConfetti(attempt){
-  if(typeof confetti==='undefined') return;
-  var card=document.querySelector('.podium-card.p1');
-  if(!card){
-    if((attempt||0)<5) setTimeout(function(){ triggerPodiumConfetti((attempt||0)+1); },120);
-    return;
-  }
-  var rect=card.getBoundingClientRect();
-  if(rect.width===0){
-    if((attempt||0)<5) setTimeout(function(){ triggerPodiumConfetti((attempt||0)+1); },120);
-    return;
-  }
-  var cx=Math.max(0.1,Math.min(0.9,(rect.left+rect.width/2)/window.innerWidth));
-  var cy=Math.max(0.05,Math.min(0.9,(rect.top+rect.height*0.3)/window.innerHeight));
-  var colors=['#EF9F27','#FFD700','#FFF4B8','#FFFFFF','#FFC107','#FFEC5C'];
-  confetti({particleCount:120,spread:80,origin:{x:cx,y:cy},colors:colors,startVelocity:42,decay:0.93,scalar:1.1,zIndex:9999});
-  setTimeout(function(){
-    confetti({particleCount:60,spread:55,origin:{x:cx,y:cy},colors:colors,startVelocity:28,decay:0.91,scalar:0.9,zIndex:9999});
-  },280);
-}
-
 // ── Dashboard ─────────────────────────────────────────────────────────────
 let sel=null;
-let tripFilter='all',tripSort='date',selVData=null;
-function setTripFilter(f){tripFilter=f;document.querySelectorAll('[data-f]').forEach(function(b){b.classList.toggle('tf-active',b.dataset.f===f);});if(selVData)renderTrips(selVData);}
-function setTripSort(s){tripSort=s;document.querySelectorAll('[data-s]').forEach(function(b){b.classList.toggle('tf-active',b.dataset.s===s);});if(selVData)renderTrips(selVData);}
 function renderRanking(){
   const el=document.getElementById('ranking');el.innerHTML='';
   const M=['🥇','🥈','🥉'];
@@ -490,11 +253,11 @@ function renderRanking(){
           (dName
             ? '<span style="font-size:12px;font-weight:600;">'+dName+'</span>'
             : '<span style="font-size:11px;font-weight:500;">'+v.plate+'</span>')+
-          (v.low_cov?'<span style="font-size:9px;color:var(--warning);" title="Limited GPS coverage on some trips">GPS limited</span>':'')+
+          (v.low_cov?'<span style="font-size:9px;color:var(--warning);">low cov</span>':'')+
         '</div>'+
         (dName?'<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">'+v.plate+' &middot; '+v.make+'</div>':
                 '<div style="font-size:10px;color:var(--text2);margin-bottom:2px;">'+v.make+'</div>')+
-        '<div class="bwrap" style="background:'+sc(v.avg)+'40;"><div class="bfill" style="width:'+v.avg+'%;background:'+sc(v.avg)+';"></div></div>'+
+        '<div class="bwrap"><div class="bfill" style="width:'+v.avg+'%;background:'+sc(v.avg)+';"></div></div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:54px;">'+
         '<div style="font-size:14px;font-weight:500;color:'+sc(v.avg)+';">'+v.avg+'</div>'+
@@ -533,7 +296,7 @@ function selectV(plate){
   const trendBadge=v.trend==='improving'
     ?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--success);background:var(--success-bg);padding:2px 8px;border-radius:20px;margin-left:8px;"><i class="ti ti-trending-up" style="font-size:11px;"></i> Improving</span>'
     :v.trend==='declining'
-    ?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:#fff;background:var(--danger-bg);padding:2px 8px;border-radius:20px;margin-left:8px;"><i class="ti ti-trending-down" style="font-size:11px;"></i> Declining</span>'
+    ?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--danger);background:var(--danger-bg);padding:2px 8px;border-radius:20px;margin-left:8px;"><i class="ti ti-trending-down" style="font-size:11px;"></i> Declining</span>'
     :'';
   el.innerHTML='';
   sumEl.innerHTML='<div style="background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--info);">'
@@ -546,8 +309,8 @@ function selectV(plate){
       +'<div style="margin-left:auto;display:flex;gap:4px;align-items:center;">'
       +[['Speeding',v.spd_avg],['Braking',v.brk_avg],['Acceleration',v.acc_avg],['Cornering',v.crn_avg]].map(function(p){
           var lbl=p[0],val=p[1];
-          if(val===null||val===undefined)return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:13px;color:var(--text3);">—</div></div>';
-          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:12.5px;margin-top:2px;letter-spacing:1px;">'+starsHalf(val)+'</div></div>';
+          if(val===null||val===undefined)return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:12px;color:var(--text3);">—</div></div>';
+          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:13px;font-weight:600;color:'+sc(val)+';">'+val+'</div></div>';
       }).join('')
       +'</div>'
       +'<span style="font-size:20px;font-weight:500;color:'+sc(v.avg)+';">'+v.avg+'</span>'
@@ -557,23 +320,7 @@ function selectV(plate){
     +predText
   +'</div>';
 
-  selVData=v;
-  tripFilter='all';tripSort='date';
-  document.querySelectorAll('[data-f]').forEach(function(b){b.classList.toggle('tf-active',b.dataset.f==='all');});
-  document.querySelectorAll('[data-s]').forEach(function(b){b.classList.toggle('tf-active',b.dataset.s==='date');});
-  var tf=document.getElementById('trip-filters');
-  if(tf)tf.style.display='flex';
-  renderTrips(v);
-}
-
-function renderTrips(v){
-  const el=document.getElementById('trips');
-  el.innerHTML='';
-  var trips=v.trips.slice();
-  if(tripFilter!=='all')trips=trips.filter(function(t){return tripSize(t.km)===tripFilter;});
-  if(tripSort==='score')trips=trips.slice().sort(function(a,b){return tot(b)-tot(a);});
-  if(!trips.length){el.innerHTML='<div class="empty" style="padding:20px;text-align:center;color:var(--text3);">No '+tripFilter+' trips found.</div>';return;}
-  trips.forEach(function(t){
+  v.trips.forEach(function(t){
     const score=tot(t);
     const comps=[
       {k:'Speeding',v:t.spd,w:t.lc?null:0.45,mx:45},
@@ -582,14 +329,14 @@ function renderTrips(v){
       {k:'Cornering',v:t.crn,w:t.lc?0.364:0.20,mx:t.lc?36:20}
     ];
     const cH=comps.map(function(c){
-      if(c.v===null)return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs" style="font-size:13px;margin-top:4px;color:var(--text3);">—</div></div>';
-      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs" style="font-size:12.5px;margin-top:4px;letter-spacing:1px;">'+starsHalf(c.v)+'</div></div>';
+      if(c.v===null)return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cv" style="color:var(--text3)">—</div><div class="cs">—</div></div>';
+      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cv" style="color:'+sc(c.v)+';">'+Math.round(c.v)+'</div><div class="cs">'+stars(c.v)+'</div></div>';
     }).join('');
     const sz=tripSize(t.km);
     const szTag=sz==='short'?'<span class="tag ts" style="margin-left:4px;" data-tip="Short trip: under 10km">Short trip</span>'
                :sz==='long'?'<span class="tag tl" style="margin-left:4px;" data-tip="Long trip: 25km or more">Long trip</span>'
                :'<span class="tag" style="margin-left:4px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);" data-tip="Standard trip: 10–24km">Standard</span>';
-    const rpmTag=t.rpm_s>3?'<span class="tag" style="margin-left:4px;background:#3b0764;color:#d8b4fe;" title="High engine RPM detected — consider changing gears earlier to reduce wear and improve efficiency">⚡ High RPM</span>':'';
+    const rpmTag=t.rpm_s>3?'<span class="tag" style="margin-left:4px;background:#3b0764;color:#d8b4fe;">⚡ High RPM</span>':'';
     const parts=t.t.split('→');
     const startTime=parts[0]||t.t;
     const endTime=parts[1]||'';
@@ -616,7 +363,8 @@ function renderTrips(v){
       +'<div class="comps">'+cH+'</div>'
       +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">'
         +'<span style="font-size:10px;color:var(--text3);white-space:nowrap;">Total</span>'
-        +'<div class="bwrap" style="height:5px;background:'+sc(score)+'40;"><div class="bfill" style="width:'+score+'%;background:'+sc(score)+';"></div></div>'
+        +'<div class="bwrap" style="height:5px;"><div class="bfill" style="width:'+score+'%;background:'+sc(score)+';"></div></div>'
+        +'<span style="font-size:11px;font-weight:500;color:'+sc(score)+';white-space:nowrap;">'+score+'/100</span>'+(t.raw!==score?'<span style="font-size:9px;color:var(--text3);margin-left:4px;">(raw '+t.raw+')</span>':'')
       +'</div>';
     card.appendChild(infoDiv);
     let mapDiv=null;
@@ -624,9 +372,6 @@ function renderTrips(v){
       mapDiv=document.createElement('div');
       mapDiv.className='trip-map-sq';
       mapDiv.id=mapId;
-      mapDiv.style.cursor='pointer';
-      mapDiv.title='Click to expand map';
-      mapDiv.onclick=(function(sl,so,el2,eo){return function(){expandMap(sl,so,el2,eo);};})(t.slat,t.slon,t.elat,t.elon);
       card.appendChild(mapDiv);
     }
     el.appendChild(card);
@@ -638,30 +383,11 @@ function renderTrips(v){
   });
 }
 
-function expandMap(slat,slon,elat,elon){
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  ov.onclick=function(e){if(e.target===ov)ov.remove();};
-  var box=document.createElement('div');
-  box.style.cssText='width:min(90vw,700px);height:min(80vh,520px);border-radius:12px;overflow:hidden;position:relative;';
-  var close=document.createElement('button');
-  close.innerHTML='&times;';
-  close.style.cssText='position:absolute;top:8px;right:8px;z-index:10000;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:18px;cursor:pointer;line-height:1;';
-  close.onclick=function(){ov.remove();};
-  var md=document.createElement('div');
-  md.style.cssText='width:100%;height:100%;';
-  md.dataset.slat=slat;md.dataset.slon=slon;md.dataset.elat=elat;md.dataset.elon=elon;md.dataset.interactive='true';
-  box.appendChild(md);box.appendChild(close);ov.appendChild(box);
-  document.body.appendChild(ov);
-  initLeafletMap(md);
-}
-
 function initLeafletMap(mapDiv){
   if(mapDiv._mapDone)return;mapDiv._mapDone=true;
   const slat=+mapDiv.dataset.slat,slon=+mapDiv.dataset.slon;
   const elat=+mapDiv.dataset.elat,elon=+mapDiv.dataset.elon;
-  const inter=mapDiv.dataset.interactive==='true';
-  const map=L.map(mapDiv,{zoomControl:inter,attributionControl:false,dragging:inter,scrollWheelZoom:inter,doubleClickZoom:inter,touchZoom:inter});
+  const map=L.map(mapDiv,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
   const sIcon=L.divIcon({html:'<div style="background:#22c55e;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
   const eIcon=L.divIcon({html:'<div style="background:#ef4444;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
@@ -683,19 +409,21 @@ const mapObserver=new IntersectionObserver(function(entries){
   entries.forEach(function(e){if(e.isIntersecting)initLeafletMap(e.target);});
 },{threshold:0.1});
 
-function renderFleetComps(){
-  var el=document.getElementById('fleet-comp-avgs');
-  if(!el||!vehicles.length)return;
-  var comps=[['Speeding','spd_avg'],['Braking','brk_avg'],['Acceleration','acc_avg'],['Cornering','crn_avg']];
-  el.innerHTML=comps.map(function(c){
-    var vals=vehicles.map(function(v){return v[c[1]];}).filter(function(x){return x!==null&&x!==undefined;});
-    var avg=vals.length?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length):null;
-    return'<div style="display:flex;align-items:center;gap:6px;">'
-      +'<span style="font-size:9px;color:var(--text3);min-width:72px;">'+c[0]+'</span>'
-      +(avg!==null?'<span style="font-size:11px;letter-spacing:0.5px;">'+starsHalf(avg)+'</span>':'<span style="color:var(--text3);font-size:11px;">—</span>')
-    +'</div>';
-  }).join('');
-}
+// Tier breakdown
+(function(){
+  const tiers=[{label:'Excellent',min:90,max:101,col:'var(--success)'},{label:'Good',min:70,max:90,col:'var(--info)'},{label:'Average',min:50,max:70,col:'var(--warning)'},{label:'Poor',min:0,max:50,col:'var(--danger)'}];
+  const el=document.getElementById('tier-breakdown');const n=vehicles.length;
+  tiers.forEach(function(tier){
+    const count=vehicles.filter(function(v){return v.avg>=tier.min&&v.avg<tier.max;}).length;
+    if(count===0)return;
+    const pct=Math.round(count/n*100);
+    const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:5px;margin-bottom:4px;';
+    row.innerHTML='<span style="font-size:9px;color:'+tier.col+';min-width:40px;letter-spacing:.5px;">'+tier.label+'</span>'
+      +'<div style="flex:1;background:var(--bg3);border-radius:2px;height:3px;"><div style="background:'+tier.col+';height:3px;border-radius:2px;width:'+pct+'%;"></div></div>'
+      +'<span style="font-size:9px;color:var(--text2);min-width:34px;text-align:right;">'+count+' <span style="color:var(--text3);">('+pct+'%)</span></span>';
+    el.appendChild(row);
+  });
+})();
 
 
 
@@ -712,9 +440,6 @@ async function loadDashboardData(){
   // Stat cards
   var fa=d.fleet_avg||0, ft=d.fleet_trend||0;
   document.getElementById('s-avg').textContent=fa;
-  var starsEl=document.getElementById('s-avg-stars');
-  if(starsEl)starsEl.innerHTML=starsHalf(fa);
-  renderFleetComps();
   document.getElementById('s-trips').textContent=d.total_trips||'';
   document.getElementById('s-vehs').textContent=d.num_vehicles||'';
   document.querySelectorAll('.s-range').forEach(function(el){ el.textContent=d.date_range||''; });
@@ -745,7 +470,6 @@ let lbIdx=0; // recalculated by loadDashboardData()
 function changeWeek(dir){
   lbIdx=Math.max(0,Math.min(weeksData.length-1,lbIdx+dir));
   renderLeaderboard();
-  setTimeout(triggerPodiumConfetti,50);
 }
 
 function renderLeaderboard(){
@@ -772,14 +496,12 @@ function renderLeaderboard(){
   const top3=wk.rankings.slice(0,3);
   const medals=['🥇','🥈','🥉'];
   const pClass=['p1','p2','p3'];
-  const podiumTopPx=[0,28,48]; // 1st=flush, 2nd=28px lower, 3rd=48px lower
   const podiumOrder=top3.length>=2?[1,0,2]:[0];
   const podEl=document.getElementById('podium');podEl.innerHTML='';
   podiumOrder.forEach(function(idx){
     if(idx>=top3.length)return;
     const r=top3[idx];
     const slot=document.createElement('div');slot.className='podium-slot';
-    slot.style.marginTop=podiumTopPx[idx]+'px';
     slot.innerHTML=
       '<div class="podium-card '+pClass[idx]+'">'
         +'<span class="podium-trend">'+trendIcon(r.trend,14)+'</span>'
@@ -790,9 +512,9 @@ function renderLeaderboard(){
         +'<div style="font-size:10px;color:'+GOLD+';margin-top:2px;">'+stars(r.score)+'</div>'
         +'<div class="podium-trips">'+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'
         +'<div class="podium-comps">'
-          +[['Speeding',r.spd],['Braking',r.brk],['Accel',r.acc],['Cornering',r.crn]].map(function(p){
+          +[['Spd',r.spd],['Brk',r.brk],['Acc',r.acc],['Crn',r.crn]].map(function(p){
             return'<div class="podium-comp"><div class="ck">'+p[0]+'</div>'
-              +(p[1]===null?'<div class="cv" style="color:var(--text3);">—</div>':'<div style="font-size:10px;letter-spacing:0;margin-top:1px;">'+starsHalf(p[1])+'</div>')
+              +(p[1]===null?'<div class="cv" style="color:var(--text3);">—</div>':'<div class="cv" style="color:'+sc(p[1])+';">'+p[1]+'</div>')
             +'</div>';
           }).join('')
         +'</div>'
@@ -804,333 +526,22 @@ function renderLeaderboard(){
   if(!wk.rankings.length){listEl.innerHTML='<div class="empty">No scored trips for this week.</div>';return;}
   wk.rankings.forEach(function(r){
     const row=document.createElement('div');
-    row.className='lb-row'+(r.rank<=3?' top':'')+(r.rank===1?' lb-row-p1':r.rank===2?' lb-row-p2':r.rank===3?' lb-row-p3':'');
+    row.className='lb-row'+(r.rank<=3?' top':'');
     const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':'';
     row.innerHTML=
       '<div class="rk'+(medal?' medal':'')+'">'+( medal||'#'+r.rank)+'</div>'
       +'<div>'
         +(drName(r.plate)?'<div style="font-size:12px;font-weight:600;">'+drName(r.plate)+ageTag(drAge(r.plate))+'</div>':'') 
         +'<div style="font-size:10px;color:var(--text3);">'+(drName(r.plate)?r.plate+' &middot; ':'')+r.make+' &middot; '+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'+(r.short||r.std||r.lng?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">'+(r.short?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--success-bg);color:var(--success);">'+r.short+' Short</span>':'')+(r.std?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);">'+r.std+' Standard</span>':'')+(r.lng?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--info-bg);color:var(--info);">'+r.lng+' Long</span>':'')+'</div>':'')
-        +'<div class="bwrap" style="background:'+sc(r.score)+'40;"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
+        +'<div class="bwrap"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
       +'</div>'
       +'<div class="sc-cell hide-m" style="color:'+sc(r.score)+';">'+r.score+'</div>'
-      +'<div class="comp-cell"><span style="font-size:10px;letter-spacing:0;">'+(r.spd!==null?starsHalf(r.spd):'<span style="color:var(--text3)">—</span>')+'</span></div>'
-      +'<div class="comp-cell"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.brk)+'</span></div>'
-      +'<div class="comp-cell hide-m"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.acc)+'</span></div>'
-      +'<div class="comp-cell hide-m"><span style="font-size:10px;letter-spacing:0;">'+starsHalf(r.crn)+'</span></div>'
-      +'<div class="trend-cell">'
-        +'<button class="chart-btn" onclick="event.stopPropagation();showTrendModal(\''+r.plate+'\')" title="Score trend chart"><i class="ti ti-chart-line" style="font-size:13px;"></i></button>'
-        +'<button class="chart-btn" onclick="event.stopPropagation();showSummaryModal(\''+r.plate+'\')" title="Weekly summary"><i class="ti ti-align-left" style="font-size:13px;"></i></button>'
-      +'</div>';
+      +'<div class="comp-cell">'+cv(r.spd)+'</div>'
+      +'<div class="comp-cell">'+cv(r.brk)+'</div>'
+      +'<div class="comp-cell hide-m">'+cv(r.acc)+'</div>'
+      +'<div class="comp-cell hide-m">'+cv(r.crn)+'</div>'
+      +'<div class="trend-cell">'+trendIcon(r.trend,13)+'</div>';
     listEl.appendChild(row);
-  });
-}
-
-// ── Trend chart modal ───────────────────────────────────────────────────────
-var _trendChart=null, _trendPlate=null, _trendRgb=null, _trendDays=7;
-
-function showTrendModal(plate){
-  closeTrendModal();
-  _trendDays=7;
-  var v=vehicles.find(function(x){return x.plate===plate;});
-  if(!v) return;
-  _trendPlate=plate;
-  _trendRgb=v.avg>=90?'34,197,94':v.avg>=70?'96,165,250':v.avg>=50?'245,158,11':'239,68,68';
-  var drData=loadDrivers(); var d=drData[plate]||{};
-  var name=((d.first||'').trim()+' '+(d.last||'').trim().toUpperCase()).trim()||plate;
-
-  var ov=document.createElement('div');
-  ov.id='trend-modal';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  ov.onclick=function(e){if(e.target===ov)closeTrendModal();};
-
-  var box=document.createElement('div');
-  box.style.cssText='width:min(92vw,560px);background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:20px;position:relative;';
-  box.innerHTML=
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">'
-      +'<div>'
-        +'<div style="font-size:14px;font-weight:600;color:var(--text);">'+name+'</div>'
-        +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+plate+' &middot; '+v.make+'</div>'
-      +'</div>'
-      +'<button onclick="closeTrendModal()" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;">&times;</button>'
-    +'</div>'
-    +'<div style="display:flex;gap:6px;margin-bottom:14px;">'
-      +'<button class="tf-btn tf-active" data-td="7"  onclick="setTrendDays(7)">7 days</button>'
-      +'<button class="tf-btn"           data-td="30" onclick="setTrendDays(30)">30 days</button>'
-      +'<button class="tf-btn"           data-td="90" onclick="setTrendDays(90)">90 days</button>'
-    +'</div>'
-    +'<div id="trend-chart-area" style="position:relative;height:220px;"><canvas id="trend-canvas"></canvas></div>';
-
-  ov.appendChild(box);
-  document.body.appendChild(ov);
-  renderTrendChart(plate,_trendRgb,7);
-}
-
-function setTrendDays(days){
-  _trendDays=days;
-  document.querySelectorAll('[data-td]').forEach(function(b){
-    b.classList.toggle('tf-active',Number(b.dataset.td)===days);
-  });
-  if(_trendPlate) renderTrendChart(_trendPlate,_trendRgb,days);
-}
-
-function closeTrendModal(){
-  if(_trendChart){_trendChart.destroy();_trendChart=null;}
-  _trendPlate=null;
-  var m=document.getElementById('trend-modal');
-  if(m) m.remove();
-}
-
-// ── Weekly summary modal ────────────────────────────────────────────────────
-function generateWeeklySummary(r){
-  var drData=loadDrivers(); var d=drData[r.plate]||{};
-  var n=((d.first||'').trim())||'';
-  var hi=n?'Hi '+n+', you':'You';
-  var t=r.trips, ts=t!==1?'s':'';
-
-  var comps=[
-    {name:'speeding', label:'Speeding',  val:r.spd},
-    {name:'braking',  label:'Braking',   val:r.brk},
-    {name:'acceleration',label:'Acceleration',val:r.acc},
-    {name:'cornering',label:'Cornering', val:r.crn}
-  ].filter(function(c){return c.val!==null&&c.val!==undefined;});
-  comps.sort(function(a,b){return b.val-a.val;});
-  var best=comps[0], worst=comps[comps.length-1];
-  var gap=best&&worst?best.val-worst.val:0;
-
-  var pick=((r.score*7+t*3+(r.rank||1)*11))%4;
-  function p(arr){return arr[pick%arr.length];}
-
-  // ── Sentence 1: overall + what you're doing well ───────────────────────
-  var s1;
-  if(r.score>=93){
-    s1=p([
-      hi+' absolutely nailed this week — '+r.score+'/100 across '+t+' trip'+ts+'. That kind of score means clean, controlled driving from start to finish — be proud of that.',
-      'What a week — '+r.score+' from '+t+' trip'+ts+'. That puts you at the very top end of the fleet and it shows in every single component.',
-      r.score+' from '+t+' trip'+ts+' — you\'re setting the bar high this week. That level of consistency across every trip is genuinely impressive.',
-      hi+' delivered a near-perfect week with '+r.score+' across '+t+' trip'+ts+'. The data shows careful, deliberate driving throughout — exactly what we love to see.'
-    ]);
-  } else if(r.score>=82){
-    s1=p([
-      hi+' had a really solid week — '+r.score+' across '+t+' trip'+ts+'. There\'s plenty to be happy about here.',
-      'A strong '+r.score+' this week across '+t+' trip'+ts+' — the driving quality is clearly there and it\'s showing up in your numbers.',
-      hi+' put in great work this week: '+r.score+' from '+t+' trip'+ts+'. That\'s the kind of score that reflects real effort and awareness behind the wheel.',
-      t+' trip'+ts+', '+r.score+' — you\'re driving well and it\'s coming through in the data. That\'s a result to feel good about.'
-    ]);
-  } else if(r.score>=68){
-    s1=p([
-      hi+' scored '+r.score+' across '+t+' trip'+ts+' this week — a decent result, and there\'s a clear path to pushing it higher.',
-      t+' trip'+ts+' and a '+r.score+' this week. The foundation is there; it\'s now about finding that extra edge and being intentional on every drive.',
-      hi+' clocked '+t+' trip'+ts+' and came away with '+r.score+'. That\'s not a bad place to be — and the improvements from here are very achievable.',
-      'A '+r.score+' this week across '+t+' trip'+ts+'. The data shows there\'s more in the tank, and we\'re confident you can get there.'
-    ]);
-  } else {
-    s1=p([
-      hi+' scored '+r.score+' from '+t+' trip'+ts+' this week — a tough week on the numbers, but what matters most is what you do next.',
-      t+' trip'+ts+' and a '+r.score+' this week. There\'s a lot of room to move, and the good news is every improvement here is very achievable with small, focused changes.',
-      hi+' had a challenging week scoring-wise at '+r.score+', but every number in this report is something you can directly improve — none of this is out of reach.',
-      'A '+r.score+' this week from '+t+' trip'+ts+'. Your score reflects a few specific driving habits that, once adjusted, could shift things quickly.'
-    ]);
-  }
-  if(best&&best.val>=87){
-    var strengthLines={
-      speeding:[' Staying within the speed limits as consistently as you did is a real standout — not everyone manages that.',' Your speeding score of '+best.val+'/100 shows genuine discipline on the road — that\'s something to keep building on.',' Speeding control at '+best.val+' is something a lot of drivers struggle with, so the fact that you\'re nailing it is worth acknowledging.'],
-      braking:[' Your smooth, controlled braking at '+best.val+'/100 is one of the clearest signs of a safe, aware driver.',' A braking score of '+best.val+' stands out — that kind of smoothness is better for the vehicle and makes every trip safer for everyone in the car.',' Your braking at '+best.val+' shows great road awareness — you\'re reading what\'s ahead and that\'s a skill worth holding onto.'],
-      acceleration:[' Your acceleration score of '+best.val+'/100 shows a calm, unhurried approach to driving — that kind of patience makes a real difference.',' Smooth acceleration at '+best.val+' means less stress on the vehicle and a safer, more comfortable ride — you\'re getting that right.',' That '+best.val+' acceleration score reflects real patience and good throttle control — it\'s a habit that pays off.'],
-      cornering:[' Your cornering at '+best.val+'/100 is excellent — reading the road well through bends takes real skill and you\'re showing it.',' A '+best.val+' cornering score shows great technique through turns — that level of control isn\'t easy to achieve and you should be proud of it.',' Your cornering score of '+best.val+' is a highlight this week — smooth through the bends every time, and it shows.']
-    };
-    var sl=strengthLines[best.name]||[' Your '+best.label.toLowerCase()+' at '+best.val+'/100 is a clear strength this week.'];
-    s1+=sl[pick%sl.length];
-  }
-
-  // ── Sentence 2: what's pulling your score down ─────────────────────────
-  var s2;
-  var improveTips={
-    speeding:[
-      'Your speeding score of '+worst.val+'/100 is the biggest drag on your overall result this week — even small reductions in excess speed add up quickly across your trips.',
-      'Speeding is where you\'re losing the most points this week at '+worst.val+'/100. Giving yourself a little more time for each journey means there\'s less pressure to push past the limit.',
-      'At '+worst.val+'/100, speeding is your clearest area to target. There are specific stretches in your trips where speed tends to creep — staying mindful there will make a noticeable difference to your score.'
-    ],
-    braking:[
-      'Your braking score of '+worst.val+'/100 is the main thing holding your score back — building a bigger gap to the car ahead is the single biggest fix, as it removes the need for those sharp stops.',
-      'Braking at '+worst.val+' suggests some reactive stops this week. Try reading the traffic further ahead and covering the brake a beat earlier — it smooths everything out and your score will show it.',
-      'Those harsh braking moments ('+worst.val+'/100) are costing you points. A two-second buffer from the car in front means you rarely have to hit the brakes hard — that one habit can lift your score significantly.'
-    ],
-    acceleration:[
-      'Your acceleration score of '+worst.val+'/100 is where you\'re leaving points on the table — building speed more gradually, especially from lights and roundabouts, would lift that number quickly.',
-      'Acceleration at '+worst.val+' shows some sharp throttle moments in your trips this week. Roll onto the accelerator rather than pressing hard, and think a beat ahead — it makes a bigger difference than you might expect.',
-      'At '+worst.val+'/100, acceleration is where your score is leaking. Smooth, measured starts — particularly in stop-start traffic — are the fastest way to bring that number up.'
-    ],
-    cornering:[
-      'Your cornering score of '+worst.val+'/100 is the area to focus on. The key adjustment is slowing to the right speed before the turn rather than mid-corner — once you build that habit, the score moves.',
-      'Cornering at '+worst.val+' suggests a few corners taken at slightly too much speed this week. Try to set your entry speed earlier, before the turn, rather than relying on the corner to scrub it off.',
-      'Cornering ('+worst.val+'/100) is your weakest link this week. Spotting turns earlier and getting your speed right on approach rather than in the corner will bring that score up noticeably.'
-    ]
-  };
-
-  if(worst&&worst.val<72){
-    var tArr=improveTips[worst.name]||['Your '+worst.label.toLowerCase()+' score of '+worst.val+'/100 is where the biggest gains are waiting — that\'s the area to focus on this week.'];
-    s2=tArr[pick%tArr.length];
-  } else if(worst&&worst.val<86){
-    s2=p([
-      'All four components are in good shape — your '+worst.label.toLowerCase()+' at '+worst.val+'/100 is the softest of the four, and dialling that in would push your overall score noticeably higher.',
-      'There\'s no single weak point dragging you down — your '+worst.label.toLowerCase()+' ('+worst.val+') is the one with the most room to grow, and bringing it closer to your other scores would lift your total meaningfully.',
-      'Your '+worst.label.toLowerCase()+' score of '+worst.val+'/100 is the main lever to pull right now. It doesn\'t take much to move that number — a more deliberate approach on just a few trips can shift it.',
-      'The gap between your strongest and weakest component is '+gap+' points this week. Closing that gap around '+worst.label.toLowerCase()+' is where your score growth will come from.'
-    ]);
-  } else {
-    s2=p([
-      'All your components are firing well this week — the challenge now shifts from fixing weaknesses to maintaining this across every single trip, not just the good ones.',
-      'With everything scoring this well, the path higher isn\'t about fixing problems — it\'s about eliminating the occasional off moment that clips your score down.',
-      'There\'s no obvious weak spot in your data this week, which is a great position to be in. The focus now is repeatability — doing this again next week is the real goal.',
-      'Every component is performing well for you this week, which means consistency is the only remaining variable. Treating every trip — short or long — with the same care will keep your numbers high.'
-    ]);
-  }
-
-  // ── Sentence 3: trend + encouragement ─────────────────────────────────
-  var s3;
-  if(r.trend==='improving'){
-    s3=p([
-      'Your upward trend says it all — you\'re actively becoming a safer driver, and that\'s genuinely worth acknowledging. Keep pushing and the leaderboard will keep reflecting it.',
-      'Your scores are heading in the right direction, and that improvement didn\'t happen by accident — it takes real effort and awareness behind the wheel. That momentum is the most valuable thing in this report.',
-      'An improving trend on top of this week\'s result is a great sign. Safe driving is a habit, and you\'re clearly building one — keep going.',
-      'Your trend arrow is pointing up and the score backs it up. That combination shows genuine development as a driver — stay focused and this will only continue.'
-    ]);
-  } else if(r.trend==='declining'){
-    s3=p([
-      'The dip in your scores this week is worth noting, but it\'s one week — not a pattern. A reset in focus for your next few drives can turn this around quickly.',
-      'Your scores have slipped slightly compared to recent weeks, but the potential you\'ve shown is still very much there. One focused, deliberate week is all it takes to bounce back.',
-      'A slight downward trend this week, but nothing that a couple of clean, mindful trips won\'t fix. Every drive is a fresh opportunity to bring your average back up.',
-      'Think of the declining trend as a nudge rather than a verdict — it\'s a good moment to recalibrate and go into your next few drives with clear intent.'
-    ]);
-  } else {
-    s3=p([
-      'Holding steady week on week is underrated — it means your good habits are sticking. The next step is finding those small gains that push your score into a new tier.',
-      'Consistency like yours is what separates reliable, safe drivers from the rest of the fleet. Keep at it and the score will grow as those habits become second nature.',
-      'A stable trend shows your good driving isn\'t a fluke — it\'s becoming your normal. That\'s a solid foundation to keep building on.',
-      'You\'re showing real steadiness in the data week after week. The next leap in your score usually comes from one or two specific focus areas rather than an overall overhaul — your base is already strong.'
-    ]);
-  }
-
-  return [s1,s2,s3];
-}
-
-function summaryStorageKey(plate,wk){
-  return 'diq_sum_'+plate+'_'+(wk.ts||wk.label||'');
-}
-
-function showSummaryModal(plate){
-  var existing=document.getElementById('summary-modal');
-  if(existing) existing.remove();
-
-  var wk=weeksData[lbIdx];
-  if(!wk) return;
-  var r=wk.rankings.find(function(x){return x.plate===plate;});
-  if(!r) return;
-
-  var drData=loadDrivers(); var d=drData[plate]||{};
-  var name=((d.first||'').trim()+' '+(d.last||'').trim().toUpperCase()).trim()||plate;
-  var v=vehicles.find(function(x){return x.plate===plate;});
-  var lineRgb=r.score>=90?'34,197,94':r.score>=70?'96,165,250':r.score>=50?'245,158,11':'239,68,68';
-
-  // Load saved summary, or generate + save a new one
-  var sKey=summaryStorageKey(plate,wk);
-  var sentences=null;
-  try{ var raw=localStorage.getItem(sKey); if(raw) sentences=JSON.parse(raw); }catch(e){}
-  if(!sentences||!Array.isArray(sentences)||sentences.length<3){
-    sentences=generateWeeklySummary(r);
-    try{ localStorage.setItem(sKey,JSON.stringify(sentences)); }catch(e){}
-  }
-
-  var ov=document.createElement('div');
-  ov.id='summary-modal';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  ov.onclick=function(e){if(e.target===ov)ov.remove();};
-
-  var box=document.createElement('div');
-  box.style.cssText='width:min(92vw,540px);background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:20px;';
-
-  var comps=[['Speeding',r.spd],['Braking',r.brk],['Acceleration',r.acc],['Cornering',r.crn]];
-  var compsHtml=comps.map(function(c){
-    return'<div style="display:flex;align-items:center;gap:6px;">'
-      +'<span style="font-size:9px;color:var(--text3);min-width:76px;text-transform:uppercase;letter-spacing:.05em;">'+c[0]+'</span>'
-      +(c[1]!==null&&c[1]!==undefined?'<span style="font-size:10px;letter-spacing:0;">'+starsHalf(c[1])+'</span><span style="font-size:10px;color:var(--text3);">'+c[1]+'</span>':'<span style="color:var(--text3);font-size:10px;">—</span>')
-    +'</div>';
-  }).join('');
-
-  box.innerHTML=
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;">'
-      +'<div>'
-        +'<div style="font-size:14px;font-weight:600;color:var(--text);">'+name+'</div>'
-        +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+plate+(v?' &middot; '+v.make:'')+' &middot; '+wk.label+'</div>'
-      +'</div>'
-      +'<div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">'
-        +'<div style="text-align:right;">'
-          +'<div style="font-size:22px;font-weight:600;color:rgba('+lineRgb+',1);">'+r.score+'</div>'
-          +'<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Week score</div>'
-        +'</div>'
-        +'<button onclick="document.getElementById(\'summary-modal\').remove()" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:18px;line-height:1;">&times;</button>'
-      +'</div>'
-    +'</div>'
-    +'<div style="background:var(--bg3);border-radius:8px;padding:12px 14px;margin-bottom:14px;">'
-      +sentences.map(function(s){return'<p style="font-size:12px;line-height:1.65;color:var(--text2);margin:0 0 8px 0;">'+s+'</p>';}).join('')
-      .replace(/<p([^>]*)>([^<]*)<\/p>(\s*)$/,'<p$1 style="font-size:12px;line-height:1.65;color:var(--text2);margin:0;">$2</p>')
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">'+compsHtml+'</div>';
-
-  ov.appendChild(box);
-  document.body.appendChild(ov);
-}
-
-function renderTrendChart(plate,lineRgb,days){
-  days=days||7;
-  if(_trendChart){_trendChart.destroy();_trendChart=null;}
-  var v=vehicles.find(function(x){return x.plate===plate;});
-  if(!v||!v.trips) return;
-  var cutoff=Date.now()/1000-days*86400;
-  var recent=v.trips.filter(function(t){return (t.begin_ts||0)>=cutoff;});
-
-  var byDate={},dateTs={};
-  recent.forEach(function(t){
-    var d=t.date||''; if(!d) return;
-    if(!byDate[d]){byDate[d]=[];dateTs[d]=t.begin_ts||0;}
-    byDate[d].push(t.total!==undefined?t.total:tot(t));
-  });
-  var dateOrder=Object.keys(byDate).sort(function(a,b){return dateTs[a]-dateTs[b];});
-  var labels=dateOrder;
-  var data=dateOrder.map(function(d){
-    var s=byDate[d]; return Math.round(s.reduce(function(a,b){return a+b;},0)/s.length);
-  });
-
-  var area=document.getElementById('trend-chart-area');
-  if(!area) return;
-  area.innerHTML='<canvas id="trend-canvas"></canvas>';
-  if(!labels.length){
-    area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">No trips in the last '+days+' days</div>';
-    return;
-  }
-  var canvas=document.getElementById('trend-canvas');
-  var minY=Math.max(0,Math.min.apply(null,data)-10);
-  var color='rgba('+lineRgb+',1)';
-  var fill='rgba('+lineRgb+',0.08)';
-  _trendChart=new Chart(canvas.getContext('2d'),{
-    type:'line',
-    data:{
-      labels:labels,
-      datasets:[{label:'Score',data:data,borderColor:color,backgroundColor:fill,pointBackgroundColor:color,pointBorderColor:color,pointRadius:5,pointHoverRadius:7,tension:0.35,fill:true,borderWidth:2}]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      scales:{
-        y:{min:minY,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#888',font:{size:11},stepSize:10}},
-        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#888',font:{size:11}}}
-      },
-      plugins:{
-        legend:{display:false},
-        tooltip:{backgroundColor:'#1a1a17',titleColor:'#aaa',bodyColor:color,borderColor:'#333',borderWidth:1,padding:10,
-          callbacks:{label:function(ctx){return 'Score: '+ctx.parsed.y+'/100';}}}
-      }
-    }
   });
 }
 
@@ -1168,7 +579,7 @@ function renderDrivers(){
       +'<div class="dr-fields">'
         +'<div class="dr-row">'
           +'<div class="dr-field"><label>First name</label><input type="text" id="dr-first-'+pid+'" value="'+(d.first||'')+'" placeholder="First name"></div>'
-          +'<div class="dr-field"><label>Last name</label><input type="text" id="dr-last-'+pid+'" value="'+(d.last||'')+'" placeholder="Last name"></div>'
+          +'<div class="dr-field"><label>Last initial</label><input type="text" id="dr-last-'+pid+'" value="'+(d.last||'')+'" placeholder="A" maxlength="1" style="text-transform:uppercase;"></div>'
         +'</div>'
         +'<div class="dr-row">'
           +'<div class="dr-field"><label>Age bracket</label><select id="dr-age-'+pid+'"><option value="">&#8212; select &#8212;</option>'+ageOpts+'</select></div>'
@@ -1212,25 +623,27 @@ function saveDr(plate){
   if(saved){ saved.classList.add('show'); clearTimeout(saved._t); saved._t=setTimeout(function(){ saved.classList.remove('show'); },1800); }
 }
 function filterDrivers(q){
-  q=(q||'').trim().toUpperCase();
-  var drData=loadDrivers();
+  q = (q||'').trim().toUpperCase();
+  var drData = loadDrivers();
+  var cards = document.querySelectorAll('#dr-grid .dr-card');
+  var active = document.querySelector('#dr-alpha .alpha-btn.alpha-active');
+  if(active && q === active.dataset.l) { /* already set */ }
+  // Sync alpha bar highlight
   document.querySelectorAll('#dr-alpha .alpha-btn').forEach(function(btn){
-    var isAlpha=q.length===1&&btn.dataset.l===q;
-    btn.classList.toggle('alpha-active',isAlpha);
-    btn.style.background=isAlpha?'var(--info-bg)':'';
-    btn.style.color=isAlpha?'var(--info)':'';
-    btn.style.borderColor=isAlpha?'var(--info)':'';
+    btn.classList.toggle('alpha-active', btn.dataset.l === q);
+    btn.style.background = btn.dataset.l === q ? 'var(--info-bg)' : '';
+    btn.style.color = btn.dataset.l === q ? 'var(--info)' : '';
+    btn.style.borderColor = btn.dataset.l === q ? 'var(--info)' : '';
   });
-  var inp=document.getElementById('dr-search');
-  if(inp&&inp.value.toUpperCase()!==q)inp.value=q;
-  document.querySelectorAll('#dr-grid .dr-card').forEach(function(card){
-    var plate=card.querySelector('.dr-plate');
-    if(!plate)return;
-    var d=drData[plate.textContent]||{};
-    var first=(d.first||'').toUpperCase();
-    var last=(d.last||'').toUpperCase();
-    var pl=(plate.textContent||'').toUpperCase();
-    card.style.display=(!q||first.includes(q)||last.includes(q)||pl.includes(q)||(last[0]&&last[0]===q&&q.length===1))?'':'none';
+  // Sync search input
+  var inp = document.getElementById('dr-search');
+  if(inp && inp.value.toUpperCase() !== q) inp.value = q;
+  cards.forEach(function(card){
+    var plate = card.querySelector('.dr-plate');
+    if(!plate) return;
+    var d = drData[plate.textContent] || {};
+    var initial = (d.last||'').trim().toUpperCase()[0] || '';
+    card.style.display = (!q || initial === q) ? '' : 'none';
   });
 }
 function buildAlphaBar(){
