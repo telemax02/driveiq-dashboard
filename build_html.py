@@ -52,6 +52,9 @@ for v in d['vehicles']:
                 key = f'{round(t[lk],3)},{round(t[lok],3)}'
                 t[field] = cache.get(key, '')
 
+# Write geocoded addresses back so supabase_sync.py picks them up
+json.dump(d, open(SCORES, 'w'))
+
 def jb(b): return 'true' if b else 'false'
 def jv(v): return 'null' if v is None else str(v)
 def js(s): return (s or '').replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
@@ -75,7 +78,7 @@ for v in d['vehicles']:
         veh_js += ('    {id:' + str(t['id']) + ',date:"' + js(t.get('date','')) + '",t:"' + t['t'] + '",km:' + str(t['km']) +
                    ',lc:' + jb(t['lc']) + ',spd:' + jv(t['spd']) +
                    ',brk:' + str(t['brk']) + ',acc:' + str(t['acc']) + ',crn:' + str(t['crn']) +
-                   ',raw:' + str(t.get('raw', t['total'])) + ',total:' + str(t.get('total', t.get('raw', 0))) + ',cov:' + str(t.get('cov_pct',0)) +
+                   ',raw:' + str(t.get('raw', t['total'])) + ',cov:' + str(t.get('cov_pct',0)) +
                    ',incident:' + jb(t['incident']) +
                    ',from:"' + js(t.get('from','')) + '",to:"' + js(t.get('to','')) + '",dp:"' + js(t.get('driving_period','Day')) +
                    '",slat:' + (str(t['slat']) if t.get('slat') is not None else 'null') +
