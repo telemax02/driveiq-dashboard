@@ -1015,6 +1015,10 @@ function generateWeeklySummary(r){
   return [s1,s2,s3];
 }
 
+function summaryStorageKey(plate,wk){
+  return 'diq_sum_'+plate+'_'+(wk.ts||wk.label||'');
+}
+
 function showSummaryModal(plate){
   var existing=document.getElementById('summary-modal');
   if(existing) existing.remove();
@@ -1028,7 +1032,15 @@ function showSummaryModal(plate){
   var name=((d.first||'').trim()+' '+(d.last||'').trim().toUpperCase()).trim()||plate;
   var v=vehicles.find(function(x){return x.plate===plate;});
   var lineRgb=r.score>=90?'34,197,94':r.score>=70?'96,165,250':r.score>=50?'245,158,11':'239,68,68';
-  var sentences=generateWeeklySummary(r);
+
+  // Load saved summary, or generate + save a new one
+  var sKey=summaryStorageKey(plate,wk);
+  var sentences=null;
+  try{ var raw=localStorage.getItem(sKey); if(raw) sentences=JSON.parse(raw); }catch(e){}
+  if(!sentences||!Array.isArray(sentences)||sentences.length<3){
+    sentences=generateWeeklySummary(r);
+    try{ localStorage.setItem(sKey,JSON.stringify(sentences)); }catch(e){}
+  }
 
   var ov=document.createElement('div');
   ov.id='summary-modal';
