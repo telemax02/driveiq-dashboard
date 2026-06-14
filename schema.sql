@@ -63,6 +63,16 @@ create table if not exists incidents (
   end_ts      bigint
 );
 
+-- Per-trip driven GPS path + harsh-event locations (lazy-loaded by the dashboard
+-- when a trip's map is expanded). Kept OUT of latest_run to avoid bloating it.
+create table if not exists trip_tracks (
+  trip_id    bigint primary key,
+  plate      text,
+  track      jsonb default '[]',   -- [[lat,lon], ...] decimated driven path
+  events     jsonb default '[]',   -- [{type,lat,lon,ts,sev}, ...] type in (brk,acc,crn,spd)
+  updated_at timestamptz default now()
+);
+
 create table if not exists fleet_runs (
   id            serial primary key,
   run_ts        timestamptz default now(),
@@ -85,6 +95,7 @@ alter table vehicles    enable row level security;
 alter table drivers     enable row level security;
 alter table trips       enable row level security;
 alter table incidents   enable row level security;
+alter table trip_tracks enable row level security;
 alter table fleet_runs  enable row level security;
 alter table latest_run  enable row level security;
 
@@ -93,5 +104,6 @@ create policy "allow_all" on vehicles   for all to anon using (true) with check 
 create policy "allow_all" on drivers    for all to anon using (true) with check (true);
 create policy "allow_all" on trips      for all to anon using (true) with check (true);
 create policy "allow_all" on incidents  for all to anon using (true) with check (true);
+create policy "allow_all" on trip_tracks for all to anon using (true) with check (true);
 create policy "allow_all" on fleet_runs  for all to anon using (true) with check (true);
 create policy "allow_all" on latest_run  for all to anon using (true) with check (true);

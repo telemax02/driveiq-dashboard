@@ -144,6 +144,13 @@ print(result2.stdout.strip())
 if result2.returncode != 0:
     print('Leaderboard build error:', result2.stderr[:500])
 
+# ── STEP 7b: Extract per-trip GPS tracks + harsh-event locations ──────────────
+print('Step 7b: Extracting trip tracks + event locations...')
+result_tt = subprocess.run([sys.executable, os.path.join(BASE,'trip_tracks.py')], capture_output=True, text=True)
+print(result_tt.stdout.strip())
+if result_tt.returncode != 0:
+    print('Trip tracks error:', result_tt.stderr[:500])
+
 # ── STEP 8: Sync to Supabase ──────────────────────────────────────────────
 print('Step 8: Syncing to Supabase...')
 result3 = subprocess.run([sys.executable, os.path.join(BASE,'supabase_sync.py')], capture_output=True, text=True)

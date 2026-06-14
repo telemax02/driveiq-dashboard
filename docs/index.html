@@ -54,7 +54,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 #trips::-webkit-scrollbar-track{background:transparent;}
 #trips::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px;}
 #trips::-webkit-scrollbar-thumb:hover{background:var(--text3);}
-.trip-map-sq{width:128px;height:128px;border-radius:8px;overflow:hidden;border:0.5px solid var(--border);flex-shrink:0;}
+.trip-map-sq{width:128px;height:128px;border-radius:8px;overflow:hidden;border:0.5px solid var(--border);flex-shrink:0;cursor:pointer;position:relative;transition:border-color .15s,transform .15s;}
+.trip-map-sq:hover{border-color:var(--info);transform:scale(1.03);}
+.trip-map-sq::after{content:"\2922";position:absolute;bottom:3px;right:3px;z-index:500;font-size:12px;line-height:1;color:#fff;background:rgba(0,0,0,.55);border-radius:4px;padding:2px 4px;pointer-events:none;}
+/* Expanded trip-map modal */
+.tm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;}
+.tm-overlay.open{display:flex;}
+.tm-modal{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);width:min(900px,96vw);height:min(640px,92vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.tm-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--border);}
+.tm-head .ttl{font-size:13px;font-weight:600;color:var(--text);}
+.tm-close{background:var(--bg3);border:none;color:var(--text2);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1;}
+.tm-close:hover{color:var(--text);}
+.tm-map{flex:1;width:100%;}
+.tm-legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:9px 14px;border-top:0.5px solid var(--border);background:var(--bg);}
+.tm-legend .li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.tm-legend .dot{width:10px;height:10px;border-radius:50%;border:1.5px solid #fff;}
+.tm-legend .li .ct{color:var(--text3);}
+.ev-pin{border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6);}
 /* ── Leaderboard ── */
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:28px;padding:0 10px;}
 .podium-slot{flex:1;max-width:220px;text-align:center;}
@@ -383,6 +399,11 @@ function selectV(plate){
     if(mapDiv){
       mapDiv.dataset.slat=t.slat;mapDiv.dataset.slon=t.slon;
       mapDiv.dataset.elat=t.elat;mapDiv.dataset.elon=t.elon;
+      mapDiv.dataset.tid=t.id;
+      mapDiv.title='Click to expand — view route & event locations';
+      mapDiv.addEventListener('click',function(){
+        openTripMap(t.id,+t.slat,+t.slon,+t.elat,+t.elon);
+      });
       mapObserver.observe(mapDiv);
     }
   });
@@ -408,6 +429,98 @@ function initLeafletMap(mapDiv){
         map.fitBounds(pl.getBounds(),{padding:[18,18]});
       }
     }).catch(function(){});
+}
+
+// ── Expanded trip map: real GPS track + harsh-event locations ───────────────
+const EVENT_TYPES={
+  spd:{label:'Speeding',     col:'#ef4444', unit:' km/h over'},
+  brk:{label:'Harsh braking',col:'#EF9F27', unit:' m/s²'},
+  crn:{label:'Harsh cornering',col:'#a855f7', unit:' g'},
+  acc:{label:'Harsh acceleration',col:'#85b7eb', unit:' m/s²'}
+};
+let _tmMap=null;
+function _ensureTmOverlay(){
+  let ov=document.getElementById('tm-overlay');
+  if(ov)return ov;
+  ov=document.createElement('div');ov.id='tm-overlay';ov.className='tm-overlay';
+  ov.innerHTML='<div class="tm-modal">'
+    +'<div class="tm-head"><span class="ttl" id="tm-title">Trip</span>'
+    +'<button class="tm-close" id="tm-close" aria-label="Close">&times;</button></div>'
+    +'<div class="tm-map" id="tm-map"></div>'
+    +'<div class="tm-legend" id="tm-legend"></div></div>';
+  document.body.appendChild(ov);
+  function close(){ ov.classList.remove('open'); if(_tmMap){_tmMap.remove();_tmMap=null;} }
+  ov.addEventListener('click',function(e){ if(e.target===ov)close(); });
+  ov.querySelector('#tm-close').addEventListener('click',close);
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&ov.classList.contains('open'))close(); });
+  return ov;
+}
+async function openTripMap(tripId,slat,slon,elat,elon){
+  const ov=_ensureTmOverlay();
+  ov.classList.add('open');
+  document.getElementById('tm-title').textContent='Trip #'+tripId+' — route & events';
+  document.getElementById('tm-legend').innerHTML='';
+  const mapEl=document.getElementById('tm-map');
+  if(_tmMap){_tmMap.remove();_tmMap=null;}
+  mapEl.innerHTML='';
+  const map=L.map(mapEl,{zoomControl:true,attributionControl:false});
+  _tmMap=map;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  const sIcon=L.divIcon({html:'<div class="ev-pin" style="background:#22c55e;width:14px;height:14px;"></div>',className:'',iconAnchor:[7,7]});
+  const eIcon=L.divIcon({html:'<div class="ev-pin" style="background:#ef4444;width:14px;height:14px;"></div>',className:'',iconAnchor:[7,7]});
+  L.marker([slat,slon],{icon:sIcon}).addTo(map).bindPopup('Start');
+  L.marker([elat,elon],{icon:eIcon}).addTo(map).bindPopup('End');
+  map.fitBounds([[slat,slon],[elat,elon]],{padding:[30,30]});
+  setTimeout(function(){ map.invalidateSize(); },60);
+
+  // Lazy-fetch the track + events for this trip
+  let row=null;
+  try{
+    const res=await _sb.from('trip_tracks').select('track,events').eq('trip_id',tripId).maybeSingle();
+    if(!res.error) row=res.data;
+  }catch(e){}
+
+  if(row&&row.track&&row.track.length>1){
+    const pl=L.polyline(row.track,{color:'#1e3a8a',weight:4,opacity:0.9}).addTo(map);
+    map.fitBounds(pl.getBounds(),{padding:[30,30]});
+  } else {
+    // fallback: OSRM estimated route between start/end
+    fetch('https://router.project-osrm.org/route/v1/driving/'+slon+','+slat+';'+elon+','+elat+'?overview=full&geometries=geojson')
+      .then(function(r){return r.json();})
+      .then(function(data){
+        if(data.routes&&data.routes[0]){
+          const c=data.routes[0].geometry.coordinates.map(function(p){return[p[1],p[0]];});
+          const pl=L.polyline(c,{color:'#1e3a8a',weight:4,opacity:0.9,dashArray:'5,6'}).addTo(map);
+          map.fitBounds(pl.getBounds(),{padding:[30,30]});
+        }
+      }).catch(function(){});
+  }
+
+  // Event markers + legend
+  const counts={spd:0,brk:0,crn:0,acc:0};
+  const events=(row&&row.events)||[];
+  events.forEach(function(ev){
+    const meta=EVENT_TYPES[ev.type]; if(!meta)return;
+    counts[ev.type]=(counts[ev.type]||0)+1;
+    const sz=ev.type==='spd'?13:11;
+    const icon=L.divIcon({html:'<div class="ev-pin" style="background:'+meta.col+';width:'+sz+'px;height:'+sz+'px;"></div>',className:'',iconAnchor:[sz/2,sz/2]});
+    const when=ev.ts?new Date(ev.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
+    L.marker([ev.lat,ev.lon],{icon:icon}).addTo(map)
+      .bindPopup('<b style="color:'+meta.col+'">'+meta.label+'</b><br>'+(ev.sev!=null?ev.sev+meta.unit+'<br>':'')+when);
+  });
+  const legend=document.getElementById('tm-legend');
+  Object.keys(EVENT_TYPES).forEach(function(k){
+    const meta=EVENT_TYPES[k];
+    const li=document.createElement('span');li.className='li';
+    li.innerHTML='<span class="dot" style="background:'+meta.col+';"></span>'+meta.label
+      +' <span class="ct">('+(counts[k]||0)+')</span>';
+    legend.appendChild(li);
+  });
+  if(!events.length){
+    const note=document.createElement('span');note.className='li';note.style.color='var(--text3)';
+    note.textContent=row?'No harsh events recorded on this trip.':'Detailed track not yet available — showing estimated route.';
+    legend.appendChild(note);
+  }
 }
 
 const mapObserver=new IntersectionObserver(function(entries){

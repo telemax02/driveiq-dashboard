@@ -237,6 +237,17 @@ def sync(scores_path):
         _batch_upsert('incidents', incs)
     print(f'  incidents: {len(incs)} upserted')
 
+    # ── Trip tracks (GPS path + harsh-event locations) ────────────────────
+    track_path = os.path.join(os.path.dirname(scores_path), 'track_cache.json')
+    if os.path.exists(track_path):
+        tc = json.load(open(track_path))
+        tracks = [{'trip_id': int(tid), 'plate': v.get('plate', ''),
+                   'track': v.get('track', []), 'events': v.get('events', [])}
+                  for tid, v in tc.items()]
+        if tracks:
+            _batch_upsert('trip_tracks', tracks)
+        print(f'  trip_tracks: {len(tracks)} upserted')
+
     # ── Fleet run record ──────────────────────────────────────────────────
     _rest('POST', 'fleet_runs', {
         'fleet_avg':     d['fleet_avg'],
