@@ -245,7 +245,8 @@ def sync(scores_path):
                    'track': v.get('track', []), 'events': v.get('events', [])}
                   for tid, v in tc.items()]
         if tracks:
-            _batch_upsert('trip_tracks', tracks)
+            # small chunks: track payloads can be large (hundreds-1000+ GPS points each)
+            _batch_upsert('trip_tracks', tracks, chunk=20)
         print(f'  trip_tracks: {len(tracks)} upserted')
 
     # ── Fleet run record ──────────────────────────────────────────────────
