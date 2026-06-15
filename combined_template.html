@@ -402,7 +402,7 @@ function selectV(plate){
     crn:'Ease off before corners rather than mid-turn. On routes you drive regularly, try slowing a little earlier going into bends — this tends to improve gradually over a couple of weeks.'
   };
   const nextTarget=v.next_target||null;
-  const ptsNeeded=nextTarget?nextTarget-v.avg:0;
+  const ptsNeeded=nextTarget?Math.round((nextTarget-v.avg)*10)/10:0;
   const predText=nextTarget
     ?'<div style="margin-top:10px;background:var(--bg3);border-radius:8px;padding:10px 12px;">'
       +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
