@@ -335,7 +335,7 @@ function selectV(plate){
       +[['Speeding',v.spd_avg],['Braking',v.brk_avg],['Acceleration',v.acc_avg],['Cornering',v.crn_avg]].map(function(p){
           var lbl=p[0],val=p[1];
           if(val===null||val===undefined)return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:12px;color:var(--text3);">—</div></div>';
-          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:13px;font-weight:600;color:'+sc(val)+';">'+val+'</div></div>';
+          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:14px;color:var(--gold);line-height:1;letter-spacing:1px;margin-top:3px;">'+starsN(val)+'</div></div>';
       }).join('')
       +'</div>'
       +'<span style="font-size:20px;font-weight:500;color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</span>'
