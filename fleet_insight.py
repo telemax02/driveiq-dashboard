@@ -38,6 +38,16 @@ MODEL = 'claude-opus-4-8'
 WNAMES = {'spd': 'speeding', 'brk': 'harsh braking', 'acc': 'harsh acceleration', 'crn': 'cornering'}
 LABELS = {'spd': 'Speeding', 'brk': 'Braking', 'acc': 'Acceleration', 'crn': 'Cornering'}
 
+# Trip-size buckets (km) — match the dashboard's tripSize() and supabase_sync.
+SHORT_MAX = 10   # < 10 km            -> short
+LONG_MIN  = 25   # >= 25 km           -> long   (standard = 10 .. <25)
+
+# Risk bands on the fleet average. Risk is a pure function of the fleet average so the
+# bracket is meaningful and trackable — the panel shows these edges so a manager can see
+# how far they are from the next band. (Incident detail is surfaced in the stars + summary.)
+RISK_LOW_MIN  = 90.0   # >= 90.0 -> Low (aligns with the dashboard's "Excellent" / 4-star tier)
+RISK_HIGH_MAX = 70.0   # <  70.0 -> High ;  70.0 .. <90.0 -> Moderate
+
 
 def _current_monday():
     """ISO date (YYYY-MM-DD) of the most recent Monday 00:00 in AEST."""
@@ -67,18 +77,32 @@ def _incident_vehicles(vehicles):
     return sum(1 for v in vehicles if any(t.get('incident') for t in v.get('trips', [])))
 
 
-def _risk(fleet_avg, n_inc, num_vehicles):
-    """Low / Moderate / High from the fleet average + confirmed speeding incidents.
+def _fleet_avg_1dp(vehicles):
+    """Mean of per-vehicle km-weighted trip totals, to 1 dp — identical to the value the
+    dashboard headline shows (supabase_sync.fleet_avg_1dp), so the panel matches it."""
+    def precise(v):
+        trips = v.get('trips', [])
+        km = sum(t.get('km', 0) for t in trips) or 1
+        return sum(t.get('total', t.get('raw', 0)) * t.get('km', 0) for t in trips) / km
+    avgs = [precise(v) for v in vehicles if v.get('trips')]
+    return round(sum(avgs) / len(avgs), 1) if avgs else 0.0
 
-    The average is the dominant signal of overall safety; the confirmed-incident
-    share escalates it. High is reserved for a genuinely weak average or near-universal
-    incidents — a strong average with some speeding lands on Moderate, not High."""
-    rate = n_inc / max(1, num_vehicles)
-    if fleet_avg < 75 or rate >= 0.8:
-        return 'High', f'fleet average {fleet_avg} with {n_inc}/{num_vehicles} vehicles flagged for incidents'
-    if fleet_avg < 87 or n_inc >= 2:
-        return 'Moderate', f'fleet average {fleet_avg} with {n_inc} confirmed incident vehicle(s)'
-    return 'Low', f'strong fleet average {fleet_avg} and minimal confirmed incidents'
+
+def _trip_mix(vehicles):
+    """Fleet-wide count of short / standard / long trips."""
+    trips = [t for v in vehicles for t in v.get('trips', [])]
+    short = sum(1 for t in trips if t.get('km', 0) < SHORT_MAX)
+    lng = sum(1 for t in trips if t.get('km', 0) >= LONG_MIN)
+    return {'short': short, 'standard': len(trips) - short - lng, 'long': lng}
+
+
+def _risk(fleet_avg):
+    """Low / Moderate / High as a pure function of the fleet average (see RISK_* bands)."""
+    if fleet_avg < RISK_HIGH_MAX:
+        return 'High', f'fleet average {fleet_avg:.1f} is below {RISK_HIGH_MAX:.1f}'
+    if fleet_avg < RISK_LOW_MIN:
+        return 'Moderate', f'fleet average {fleet_avg:.1f} is between {RISK_HIGH_MAX:.1f} and {RISK_LOW_MIN:.1f}'
+    return 'Low', f'fleet average {fleet_avg:.1f} is at or above {RISK_LOW_MIN:.1f}'
 
 
 def _worst_component(comps):
@@ -102,13 +126,13 @@ def _fallback_summary(stats):
     fa = stats['fleet_avg']; nv = stats['num_vehicles']; tt = stats['total_trips']
     worst = WNAMES.get(stats['worst'], 'cornering'); n_inc = stats['n_incident_vehicles']
     if fa >= 90:
-        s1 = (f"The fleet is performing strongly, averaging {fa} across {nv} vehicles "
+        s1 = (f"The fleet is performing strongly, averaging {fa:.1f} across {nv} vehicles "
               f"and {tt} trips, with {worst} the only area showing meaningful room to improve.")
     elif fa >= 70:
-        s1 = (f"The fleet is driving well overall, averaging {fa} across {nv} vehicles "
+        s1 = (f"The fleet is driving well overall, averaging {fa:.1f} across {nv} vehicles "
               f"and {tt} trips, with {worst} the main area to work on.")
     else:
-        s1 = (f"The fleet needs attention, averaging {fa} across {nv} vehicles and "
+        s1 = (f"The fleet needs attention, averaging {fa:.1f} across {nv} vehicles and "
               f"{tt} trips, with {worst} the primary issue pulling scores down.")
     if n_inc:
         s2 = (f" {n_inc} vehicle{'s' if n_inc > 1 else ''} recorded confirmed speeding "
@@ -126,22 +150,30 @@ def _ai_summary(stats):
     if not key:
         return _fallback_summary(stats), False
 
-    comps = stats['comps']
+    comps = stats['comps']; mix = stats['mix']
+
+    def c1(v):
+        return 'n/a' if v is None else f'{v:.1f}'
+
     prompt = (
         "You are writing a brief fleet-safety summary for a vehicle-fleet dashboard.\n\n"
         "Data for the current reporting period:\n"
-        f"- Fleet average safety score: {stats['fleet_avg']}/100 across "
+        f"- Fleet average safety score: {stats['fleet_avg']:.1f}/100 across "
         f"{stats['num_vehicles']} vehicles and {stats['total_trips']} trips.\n"
-        f"- Component scores (0-100, higher is safer): Speeding {comps['spd']}, "
-        f"Braking {comps['brk']}, Acceleration {comps['acc']}, Cornering {comps['crn']}.\n"
+        f"- Component scores (0-100, higher is safer): Speeding {c1(comps['spd'])}, "
+        f"Braking {c1(comps['brk'])}, Acceleration {c1(comps['acc'])}, Cornering {c1(comps['crn'])}.\n"
+        f"- Trip mix: {mix['short']} short (<10 km), {mix['standard']} standard (10-25 km), "
+        f"{mix['long']} long (>=25 km).\n"
         f"- Weakest area: {WNAMES.get(stats['worst'], 'cornering')}.\n"
         f"- Vehicles with confirmed speeding incidents this period: {stats['n_incident_vehicles']}.\n"
         f"- Change vs last week's fleet average: {stats['trend_phrase']}.\n"
-        f"- Current risk level: {stats['risk']}.\n\n"
+        f"- Current risk level: {stats['risk']} (bands: Low {RISK_LOW_MIN:.1f}+, "
+        f"Moderate {RISK_HIGH_MAX:.1f}-{RISK_LOW_MIN:.1f}, High below {RISK_HIGH_MAX:.1f}).\n\n"
         "Write a 1-2 sentence plain-English summary for a fleet manager covering how the "
         "fleet is performing overall, the trend, and the single most important issue to "
-        "watch. Use only the numbers above — do not invent any figures. No markdown, no "
-        "bullet points, no preamble; reply with just the summary sentences."
+        "watch. Write every score to one decimal place (e.g. 89.9, never 90). Use only the "
+        "numbers above — do not invent any figures. No markdown, no bullet points, no "
+        "preamble; reply with just the summary sentences."
     )
     body = json.dumps({
         'model': MODEL,
@@ -179,16 +211,17 @@ def build(scores_path=SCORES, cache_path=CACHE, force=False):
     d = json.load(open(scores_path))
     vehicles = d.get('vehicles', [])
     comps = _fleet_components(vehicles)
-    fleet_avg = d.get('fleet_avg', 0)
+    fleet_avg = _fleet_avg_1dp(vehicles)  # 1 dp, matches the dashboard headline
+    mix = _trip_mix(vehicles)
     n_inc = _incident_vehicles(vehicles)
     num_vehicles = d.get('num_vehicles', len(vehicles))
-    risk, risk_reason = _risk(fleet_avg, n_inc, num_vehicles)
+    risk, risk_reason = _risk(fleet_avg)
     worst = _worst_component(comps)
     prev_avg = cache.get('fleet_avg') if cache else None  # last week's, for the trend
 
     stats = {
         'fleet_avg': fleet_avg, 'num_vehicles': num_vehicles,
-        'total_trips': d.get('total_trips', 0), 'comps': comps, 'worst': worst,
+        'total_trips': d.get('total_trips', 0), 'comps': comps, 'mix': mix, 'worst': worst,
         'n_incident_vehicles': n_inc, 'risk': risk,
         'trend_phrase': _trend_phrase(fleet_avg, prev_avg),
     }
@@ -200,7 +233,9 @@ def build(scores_path=SCORES, cache_path=CACHE, force=False):
         'fleet_avg': fleet_avg, 'prev_avg': prev_avg,
         'total_trips': stats['total_trips'], 'num_vehicles': stats['num_vehicles'],
         'spd': comps['spd'], 'brk': comps['brk'], 'acc': comps['acc'], 'crn': comps['crn'],
+        'short': mix['short'], 'standard': mix['standard'], 'long': mix['long'],
         'n_incident_vehicles': n_inc, 'risk': risk, 'risk_reason': risk_reason,
+        'risk_low_min': RISK_LOW_MIN, 'risk_high_max': RISK_HIGH_MAX,
         'summary': summary, 'ai': ai,
     }
     json.dump(out, open(cache_path, 'w'))

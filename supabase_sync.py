@@ -281,7 +281,9 @@ def sync(scores_path):
     if os.path.exists(fi_path):
         fi = json.load(open(fi_path))
         fleet_insight = {k: fi.get(k) for k in
-                         ('spd', 'brk', 'acc', 'crn', 'risk', 'summary', 'week_of')}
+                         ('spd', 'brk', 'acc', 'crn', 'risk', 'summary', 'week_of',
+                          'fleet_avg', 'short', 'standard', 'long',
+                          'risk_low_min', 'risk_high_max')}
         print(f'  fleet_insight: embedded (week of {fi.get("week_of")}, risk {fi.get("risk")})')
 
     _rest('POST', 'latest_run', {

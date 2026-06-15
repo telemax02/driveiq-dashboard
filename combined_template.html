@@ -662,22 +662,47 @@ function renderFleetInsight(fi){
   var el=document.getElementById('tier-breakdown');
   if(!el) return;
   if(!fi){ el.innerHTML=''; return; }
+  var rcolMap={Low:'var(--success)',Moderate:'var(--warning)',High:'var(--danger)'};
+  var rcol=rcolMap[fi.risk]||'var(--text3)';
+  function f1(x){return (+x).toFixed(1);}
+
+  // component stars
   var comps=[['Speeding',fi.spd],['Braking',fi.brk],['Acceleration',fi.acc],['Cornering',fi.crn]];
-  var rcol={Low:'var(--success)',Moderate:'var(--warning)',High:'var(--danger)'}[fi.risk]||'var(--text3)';
   var rows=comps.map(function(c){
     var stars=(c[1]==null)?'<span style="color:var(--text3);font-size:11px;">—</span>':starsN(c[1]);
     return '<div style="display:flex;align-items:center;gap:8px;">'
       +'<span style="font-size:11px;color:var(--text2);min-width:84px;">'+c[0]+'</span>'
       +'<span style="font-size:14px;line-height:1;letter-spacing:1px;">'+stars+'</span></div>';
   }).join('');
+
+  // risk badge + score-band legend (so they can see how close they are to the next band)
+  var lo=(fi.risk_low_min!=null?fi.risk_low_min:85), hi=(fi.risk_high_max!=null?fi.risk_high_max:70);
   var badge=fi.risk?('<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;'
     +'letter-spacing:.5px;text-transform:uppercase;color:'+rcol+';border:1px solid '+rcol+';border-radius:11px;padding:2px 9px;">'
     +'<i class="ti ti-shield-half-filled" style="font-size:12px;"></i>'+esc(fi.risk)+' risk</span>'):'';
+  var bands=[['High','&lt;'+f1(hi),'var(--danger)'],['Moderate',f1(hi)+'–'+f1(lo),'var(--warning)'],['Low','&ge;'+f1(lo),'var(--success)']];
+  var legend=bands.map(function(b){
+    var on=(b[0]===fi.risk);
+    return '<span style="color:'+(on?b[2]:'var(--text3)')+';'+(on?'font-weight:600;':'')+'">'+b[0]+' '+b[1]+'</span>';
+  }).join('<span style="color:var(--text3);"> · </span>');
+  var riskBlock=fi.risk?('<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">'
+    +badge+'<span style="font-size:8.5px;white-space:nowrap;">'+legend+'</span></div>'):'';
+
+  // trip mix (short / standard / long)
+  var sh=fi.short||0, st=fi.standard||0, lg=fi.long||0, tot=sh+st+lg;
+  function pct(n){return tot?Math.round(n/tot*100):0;}
+  function seg(n,lab){return '<span><b style="color:var(--text);">'+n+'</b> '+lab
+    +' <span style="color:var(--text3);">('+pct(n)+'%)</span></span>';}
+  var mix=tot?('<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:9px;font-size:10.5px;color:var(--text2);">'
+    +'<span style="color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-size:9px;">Trip mix</span>'
+    +seg(sh,'short')+seg(st,'standard')+seg(lg,'long')+'</div>'):'';
+
   el.innerHTML=
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">'
-      +'<span style="font-size:10px;letter-spacing:.8px;color:var(--text3);text-transform:uppercase;">Fleet breakdown</span>'
-      +badge+'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 22px;margin-bottom:10px;">'+rows+'</div>'
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:9px;">'
+      +'<span style="font-size:10px;letter-spacing:.8px;color:var(--text3);text-transform:uppercase;padding-top:3px;">Fleet breakdown</span>'
+      +riskBlock+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 22px;margin-bottom:9px;">'+rows+'</div>'
+    +mix
     +(fi.summary?('<div style="font-size:11px;line-height:1.45;color:var(--text2);">'+esc(fi.summary)+'</div>'):'');
 }
 
