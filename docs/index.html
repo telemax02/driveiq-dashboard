@@ -388,7 +388,9 @@ function renderRanking(){
 function selectV(plate){
   sel=plate;renderRanking();
   const v=vehicles.find(function(x){return x.plate===plate;});
-  document.getElementById('trip-label').textContent=v.plate+' '+v.make+' — '+v.trips.length+' trip'+(v.trips.length!==1?'s':'')+' scored';
+  var _drD=loadDrivers()[plate]||{};
+  var drName=((_drD.first||'').trim()+' '+((_drD.last||'').trim()?(_drD.last||'').trim().toUpperCase()+'.':'')).trim();
+  document.getElementById('trip-label').style.display='none'; // title now lives inside the summary card
   const el=document.getElementById('trips');
   const sumEl=document.getElementById('vehicle-summary');
   const compNames={spd:'Speeding',brk:'Braking',acc:'Acceleration',crn:'Cornering'};
@@ -417,6 +419,8 @@ function selectV(plate){
     :'';
   el.innerHTML='';
   sumEl.innerHTML='<div style="background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--info);">'
+    +'<div style="font-size:21px;font-weight:700;color:var(--text);line-height:1.15;">'+(drName||v.plate)+'</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">'+v.plate+' &middot; '+v.make+' &middot; '+v.trips.length+' trip'+(v.trips.length!==1?'s':'')+' scored</div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
       +(v.rank===1?'<span style="font-size:22px;">🥇</span>':v.rank===2?'<span style="font-size:22px;">🥈</span>':v.rank===3?'<span style="font-size:22px;">🥉</span>':'')
       +'<span style="font-size:11px;font-weight:500;color:var(--text3);">Fleet rank</span>'
