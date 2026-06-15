@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
 :root{--bg:#1e1e1c;--bg2:#2a2a27;--bg3:#333330;--text:#f0efeb;--text2:#b4b2a9;--text3:#6b6a64;--border:rgba(255,255,255,0.10);--success:#97c459;--success-bg:#27500a;--info:#85b7eb;--info-bg:#0c447c;--warning:#EF9F27;--warning-bg:#633806;--danger:#ef4444;--danger-bg:#791f1f;--gold:#EF9F27;--radius:8px;--radius-lg:12px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -88,6 +89,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .podium-comp .ck{font-size:8px;color:var(--text3);}
 .podium-comp .cv{font-size:11px;font-weight:600;margin-top:1px;}
 .podium-trend{position:absolute;top:10px;right:10px;font-size:14px;}
+.trophy-pop{position:absolute;top:-26px;left:50%;margin-left:-18px;font-size:34px;transform-origin:center bottom;animation:trophyPop .8s cubic-bezier(.18,1.5,.45,1) both;pointer-events:none;filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));z-index:3;}
+@keyframes trophyPop{0%{transform:scale(0) translateY(14px) rotate(-12deg);opacity:0;}55%{transform:scale(1.35) translateY(-8px) rotate(6deg);opacity:1;}75%{transform:scale(.95) translateY(0) rotate(-3deg);}100%{transform:scale(1) translateY(0) rotate(0);opacity:1;}}
 .week-nav{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
 .week-nav button{background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
 .week-nav button:hover{background:var(--bg3);}
@@ -733,6 +736,7 @@ function renderLeaderboard(){
     const slot=document.createElement('div');slot.className='podium-slot';
     slot.innerHTML=
       '<div class="podium-card '+pClass[idx]+'">'
+        +(idx===0?'<div class="trophy-pop">🏆</div>':'')
         +'<span class="podium-trend">'+trendIcon(r.trend,14)+'</span>'
         +'<span class="podium-medal">'+medals[idx]+'</span>'
         +(drName(r.plate)?'<div class="podium-plate">'+drName(r.plate)+'</div>'+'<div class="podium-make">'+r.plate+' &middot; '+r.make+(drAge(r.plate)?' &middot; '+drAge(r.plate):'')+'</div>'
@@ -772,6 +776,23 @@ function renderLeaderboard(){
       +'<div class="trend-cell">'+trendIcon(r.trend,13)+'</div>';
     listEl.appendChild(row);
   });
+  celebrateWinner();
+}
+
+// Confetti + trophy pop for the week's #1
+function celebrateWinner(){
+  if(typeof confetti!=='function')return;
+  if(document.getElementById('view-lb').style.display==='none')return; // only when leaderboard is showing
+  setTimeout(function(){
+    var card=document.querySelector('#podium .podium-card.p1');
+    if(!card)return;
+    var r=card.getBoundingClientRect();
+    var x=(r.left+r.width/2)/window.innerWidth;
+    var y=(r.top+r.height*0.35)/window.innerHeight;
+    var cols=['#EF9F27','#97c459','#85b7eb','#ef4444','#ffffff','#c084fc'];
+    confetti({particleCount:130,spread:75,startVelocity:48,origin:{x:x,y:y},colors:cols,scalar:0.9,ticks:220});
+    setTimeout(function(){confetti({particleCount:70,spread:110,startVelocity:32,origin:{x:x,y:y},colors:cols,scalar:0.8});},220);
+  },80);
 }
 
 // ── Drivers ────────────────────────────────────────────────────────────────
