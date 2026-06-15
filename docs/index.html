@@ -15,7 +15,7 @@
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
 .page{max-width:1100px;margin:0 auto;padding:24px 20px;}
 /* ── Header & Tabs ── */
-.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;}
+.header{display:flex;align-items:center;margin-bottom:20px;gap:12px;}
 .header h1{font-size:20px;font-weight:500;white-space:nowrap;}
 .tabs{display:flex;background:var(--bg2);border-radius:8px;padding:3px;gap:2px;border:0.5px solid var(--border);}
 .tab{background:transparent;border:none;color:var(--text3);font-size:12px;font-weight:500;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
@@ -129,7 +129,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 <div class="page">
   <!-- ── Header ── -->
   <div class="header">
-    <div style="display:flex;flex-direction:column;gap:0;line-height:1;">
+    <div style="display:flex;flex-direction:column;gap:0;line-height:1;flex:1;">
       <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;">
         <span style="color:var(--text3);">Drive</span><span style="color:#7cb83e;">IQ</span>
       </div>
@@ -141,6 +141,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
     </div>
+    <div style="flex:1;"></div>
   </div>
 
   <!-- ══════════════════════════════════════════
@@ -419,6 +420,7 @@ function selectV(plate){
           return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:14px;color:var(--gold);line-height:1;letter-spacing:1px;margin-top:3px;">'+starsN(val)+'</div></div>';
       }).join('')
       +'</div>'
+      +(v.avg>=100?'<span style="font-size:14px;margin-right:3px;">🏆</span>':v.avg>=90?'<span style="font-size:14px;margin-right:3px;">💎</span>':'')
       +'<span style="font-size:20px;font-weight:500;color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</span>'
     +'</div>'
     +(v.summary?'<p style="font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:10px;">'+v.summary+'</p>':'')
