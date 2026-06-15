@@ -5,6 +5,8 @@ Tables: vehicles, trips, incidents, fleet_runs, latest_run (live dashboard)
 import json, os, datetime, urllib.request, urllib.error
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+# fleet-insight display fields are recomputed live each run (only the AI prose is weekly)
+from fleet_insight import _fleet_components, _trip_mix, _risk, RISK_LOW_MIN, RISK_HIGH_MAX
 
 SUPA_URL = os.environ['SUPABASE_URL']
 SUPA_KEY = os.environ['SUPABASE_KEY']
@@ -280,11 +282,20 @@ def sync(scores_path):
     fi_path = os.path.join(os.path.dirname(scores_path), 'fleet_insight_cache.json')
     if os.path.exists(fi_path):
         fi = json.load(open(fi_path))
-        fleet_insight = {k: fi.get(k) for k in
-                         ('spd', 'brk', 'acc', 'crn', 'risk', 'summary', 'week_of',
-                          'fleet_avg', 'short', 'standard', 'long',
-                          'risk_low_min', 'risk_high_max')}
-        print(f'  fleet_insight: embedded (week of {fi.get("week_of")}, risk {fi.get("risk")})')
+        # Component stars, trip mix, risk and the fleet average are recomputed LIVE here so
+        # the panel always agrees with the headline; only the AI prose + its week are weekly.
+        comps = _fleet_components(d['vehicles'])
+        mix = _trip_mix(d['vehicles'])
+        live_risk, _ = _risk(fleet_avg_1dp)
+        fleet_insight = {
+            'spd': comps['spd'], 'brk': comps['brk'], 'acc': comps['acc'], 'crn': comps['crn'],
+            'short': mix['short'], 'standard': mix['standard'], 'long': mix['long'],
+            'fleet_avg': fleet_avg_1dp, 'risk': live_risk,
+            'risk_low_min': RISK_LOW_MIN, 'risk_high_max': RISK_HIGH_MAX,
+            'summary': fi.get('summary'), 'week_of': fi.get('week_of'),
+        }
+        print(f'  fleet_insight: embedded (prose week of {fi.get("week_of")}, '
+              f'live risk {live_risk} @ {fleet_avg_1dp})')
 
     _rest('POST', 'latest_run', {
         'id': 1,

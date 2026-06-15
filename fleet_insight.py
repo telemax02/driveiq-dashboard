@@ -111,36 +111,43 @@ def _worst_component(comps):
 
 
 def _trend_phrase(fleet_avg, prev_avg):
+    """Qualitative trend (no number — the prose must not cite a figure that can drift)."""
     if prev_avg is None:
         return 'no prior week to compare against'
-    delta = round(fleet_avg - prev_avg, 1)
+    delta = fleet_avg - prev_avg
+    if delta >= 2:
+        return 'notably higher than last week'
     if delta >= 0.5:
-        return f'up {delta} points'
+        return 'slightly higher than last week'
+    if delta <= -2:
+        return 'notably lower than last week'
     if delta <= -0.5:
-        return f'down {abs(delta)} points'
-    return 'effectively unchanged'
+        return 'slightly lower than last week'
+    return 'about the same as last week'
 
 
 def _fallback_summary(stats):
-    """Deterministic template summary (used when the AI call is unavailable)."""
+    """Deterministic template summary (used when the AI call is unavailable).
+
+    Qualitative on purpose — no fleet-average number and no risk word, because the
+    live badge/headline own those (the prose is a weekly snapshot and must not drift
+    out of agreement with them)."""
     fa = stats['fleet_avg']; nv = stats['num_vehicles']; tt = stats['total_trips']
     worst = WNAMES.get(stats['worst'], 'cornering'); n_inc = stats['n_incident_vehicles']
     if fa >= 90:
-        s1 = (f"The fleet is performing strongly, averaging {fa:.1f} across {nv} vehicles "
-              f"and {tt} trips, with {worst} the only area showing meaningful room to improve.")
+        s1 = (f"The fleet is performing strongly across {nv} vehicles and {tt} trips, "
+              f"with {worst} the only area showing meaningful room to improve.")
     elif fa >= 70:
-        s1 = (f"The fleet is driving well overall, averaging {fa:.1f} across {nv} vehicles "
-              f"and {tt} trips, with {worst} the main area to work on.")
+        s1 = (f"The fleet is driving well overall across {nv} vehicles and {tt} trips, "
+              f"with {worst} the main area to work on.")
     else:
-        s1 = (f"The fleet needs attention, averaging {fa:.1f} across {nv} vehicles and "
-              f"{tt} trips, with {worst} the primary issue pulling scores down.")
+        s1 = (f"The fleet needs attention across {nv} vehicles and {tt} trips, with "
+              f"{worst} the primary issue pulling performance down.")
     if n_inc:
-        s2 = (f" {n_inc} vehicle{'s' if n_inc > 1 else ''} recorded confirmed speeding "
-              f"incidents this period — the fleet is at {stats['risk'].lower()} risk and "
-              f"{worst} should be the focus.")
+        s2 = (f" {n_inc} of {nv} vehicles recorded confirmed speeding incidents this "
+              f"period, so {worst} should be the focus.")
     else:
-        s2 = (f" No confirmed speeding incidents this period; the fleet is at "
-              f"{stats['risk'].lower()} risk.")
+        s2 = " No confirmed speeding incidents this period."
     return (s1 + s2).strip()
 
 
@@ -157,7 +164,8 @@ def _ai_summary(stats):
 
     prompt = (
         "You are writing a brief fleet-safety summary for a vehicle-fleet dashboard.\n\n"
-        "Data for the current reporting period:\n"
+        "Context for the current reporting period (for your judgement only — do NOT quote "
+        "these figures verbatim):\n"
         f"- Fleet average safety score: {stats['fleet_avg']:.1f}/100 across "
         f"{stats['num_vehicles']} vehicles and {stats['total_trips']} trips.\n"
         f"- Component scores (0-100, higher is safer): Speeding {c1(comps['spd'])}, "
@@ -166,14 +174,16 @@ def _ai_summary(stats):
         f"{mix['long']} long (>=25 km).\n"
         f"- Weakest area: {WNAMES.get(stats['worst'], 'cornering')}.\n"
         f"- Vehicles with confirmed speeding incidents this period: {stats['n_incident_vehicles']}.\n"
-        f"- Change vs last week's fleet average: {stats['trend_phrase']}.\n"
-        f"- Current risk level: {stats['risk']} (bands: Low {RISK_LOW_MIN:.1f}+, "
-        f"Moderate {RISK_HIGH_MAX:.1f}-{RISK_LOW_MIN:.1f}, High below {RISK_HIGH_MAX:.1f}).\n\n"
+        f"- Trend vs last week: {stats['trend_phrase']}.\n\n"
         "Write a 1-2 sentence plain-English summary for a fleet manager covering how the "
         "fleet is performing overall, the trend, and the single most important issue to "
-        "watch. Write every score to one decimal place (e.g. 89.9, never 90). Use only the "
-        "numbers above — do not invent any figures. No markdown, no bullet points, no "
-        "preamble; reply with just the summary sentences."
+        "watch.\n"
+        "IMPORTANT: Do NOT state the fleet-average score and do NOT name a risk level "
+        "(Low / Moderate / High) — both are displayed live beside your summary and would "
+        "contradict it as the data updates. Describe performance qualitatively instead "
+        "(e.g. 'performing strongly', 'driving well', 'needs attention'). You MAY state the "
+        "count of vehicles with confirmed incidents. Do not invent any figures. No markdown, "
+        "no bullet points, no preamble; reply with just the summary sentences."
     )
     body = json.dumps({
         'model': MODEL,
