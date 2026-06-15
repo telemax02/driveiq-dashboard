@@ -534,7 +534,7 @@ async function openTripMap(tripId,slat,slon,elat,elon){
     var sevTag=sv?' <span style="color:'+sv.col+';font-weight:600;">'+sv.lbl+'</span>':'';
     var detail=(ev.type==='spd'&&ev.spd!=null&&ev.lim!=null)
       ? '<b>'+ev.spd+' km/h</b> in a '+ev.lim+' km/h zone'+(ev.sev!=null?' (+'+ev.sev+' over)':'')
-      : (ev.sev!=null?ev.sev+meta.unit:'');
+      : '';  // harsh brk/acc/crn: show type + severity only, no raw g value
     L.marker([ev.lat,ev.lon],{icon:icon}).addTo(map)
       .bindPopup('<b style="color:'+meta.col+'">'+meta.label+'</b>'+sevTag+'<br>'+(detail?detail+'<br>':'')+when);
   });
