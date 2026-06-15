@@ -110,12 +110,13 @@ def extract(msgs):
         if is_speeding:
             excess = speed - lim
             if spd_run is None or excess > spd_run['sev']:
+                pt = {'type': 'spd', 'lat': round(lat,6), 'lon': round(lon,6),
+                      'ts': int(ts), 'sev': round(excess),
+                      'spd': round(speed), 'lim': round(lim)}  # actual speed + limit at peak
                 if spd_run is None:
-                    spd_run = {'type': 'spd', 'lat': round(lat,6), 'lon': round(lon,6),
-                               'ts': int(ts), 'sev': round(excess)}
+                    spd_run = pt
                 else:
-                    spd_run.update({'lat': round(lat,6), 'lon': round(lon,6),
-                                    'ts': int(ts), 'sev': round(excess)})
+                    spd_run.update(pt)
         else:
             if spd_run is not None:
                 events.append(spd_run); spd_run = None

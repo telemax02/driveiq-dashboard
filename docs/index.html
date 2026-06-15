@@ -520,8 +520,11 @@ async function openTripMap(tripId,slat,slon,elat,elon){
     const sz=ev.type==='spd'?13:11;
     const icon=L.divIcon({html:'<div class="ev-pin" style="background:'+meta.col+';width:'+sz+'px;height:'+sz+'px;"></div>',className:'',iconAnchor:[sz/2,sz/2]});
     const when=ev.ts?new Date(ev.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
+    var detail=(ev.type==='spd'&&ev.spd!=null&&ev.lim!=null)
+      ? '<b>'+ev.spd+' km/h</b> in a '+ev.lim+' km/h zone'+(ev.sev!=null?' (+'+ev.sev+' over)':'')
+      : (ev.sev!=null?ev.sev+meta.unit:'');
     L.marker([ev.lat,ev.lon],{icon:icon}).addTo(map)
-      .bindPopup('<b style="color:'+meta.col+'">'+meta.label+'</b><br>'+(ev.sev!=null?ev.sev+meta.unit+'<br>':'')+when);
+      .bindPopup('<b style="color:'+meta.col+'">'+meta.label+'</b><br>'+(detail?detail+'<br>':'')+when);
   });
   const legend=document.getElementById('tm-legend');
   Object.keys(EVENT_TYPES).forEach(function(k){
