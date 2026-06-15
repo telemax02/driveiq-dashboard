@@ -31,7 +31,7 @@ PLATE_TO_DEV = {pl: did for did, pl in DEVS.items()}
 # Calc thresholds (m/s^2 and lateral g) — mirror of calc 2923614 counters
 BRAKE_MS2  = -3.5     # harsh_braking_count:  longitudinal accel < -3.5 (~0.35g)
 ACCEL_MS2  = 2.5      # harsh_accel_count:    longitudinal accel >= 2.5 (~0.25g)
-CORNER_G   = 0.3      # harsh_cornering_count: lateral g >= 0.3 (only when speed >= 35 km/h)
+CORNER_G   = 0.4      # harsh_cornering_count: lateral g >= 0.4 (only when speed >= 35 km/h)
 CORNER_MIN_SPEED = 35
 SPEED_FACTOR = 1.08   # speeding: speed > limit * 1.08
 DT_MIN, DT_MAX = 1, 30
