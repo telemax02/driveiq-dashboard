@@ -110,6 +110,13 @@ def _precise_avg(v):
     return sum(t.get('total', t.get('raw', 0)) * t.get('km', 0) for t in trips) / km
 
 
+def _next_level(avg):
+    if avg >= 90: return None
+    if avg >= 70: return 90
+    if avg >= 50: return 70
+    return 50
+
+
 def _enrich_vehicles(vehicles):
     """Compute rank, comp_avgs, trend and flatten for template JS.
     score_v2.py sorts vehicles but doesn't add these fields."""
@@ -152,6 +159,19 @@ def _enrich_vehicles(vehicles):
         vv['brk_avg'] = ca['brk']
         vv['acc_avg'] = ca['acc']
         vv['crn_avg'] = ca['crn']
+
+        # Predicted best-case + next target (feeds the vehicle card's "Next level" tip).
+        # Ported from fast_rerun so these exist in CI too — score_v2 doesn't compute them,
+        # which previously left every vehicle defaulting to the "Top tier" message.
+        valid = {k: ca[k] for k in ('spd', 'brk', 'acc', 'crn') if ca.get(k) is not None}
+        worst = min(valid, key=valid.get) if valid else 'crn'
+        imp = dict(ca); imp[worst] = 100
+        imp_spd = imp['spd'] if imp['spd'] is not None else vv['avg']
+        vv['predicted_avg'] = max(vv['avg'], round(0.45 * imp_spd + 0.20 * imp['brk']
+                                                   + 0.20 * imp['crn'] + 0.15 * imp['acc']))
+        vv['predicted_comp'] = worst
+        vv['pred_comp'] = worst              # name the dashboard's "Focus:" tip reads
+        vv['next_target'] = _next_level(vv['avg'])
 
         # trend: compare last two weeks
         pw = week_scores.get(v['plate'], {})
@@ -279,9 +299,11 @@ def sync(scores_path):
     # Fleet insight (weekly-cached: component stars + risk + AI summary). Embed the
     # display fields if fleet_insight.py has produced a cache; omit otherwise.
     fleet_insight = None
+    veh_summaries = {}
     fi_path = os.path.join(os.path.dirname(scores_path), 'fleet_insight_cache.json')
     if os.path.exists(fi_path):
         fi = json.load(open(fi_path))
+        veh_summaries = fi.get('vehicles') or {}  # weekly per-vehicle AI summaries, by plate
         # Component stars, trip mix, risk and the fleet average are recomputed LIVE here so
         # the panel always agrees with the headline; only the AI prose + its week are weekly.
         comps = _fleet_components(d['vehicles'])
@@ -297,11 +319,21 @@ def sync(scores_path):
         print(f'  fleet_insight: embedded (prose week of {fi.get("week_of")}, '
               f'live risk {live_risk} @ {fleet_avg_1dp})')
 
+    # Enrich vehicles, then attach the weekly per-vehicle AI summary (overrides any template).
+    enriched = _enrich_vehicles(d['vehicles'])
+    n_veh_sum = 0
+    for vv in enriched:
+        s = (veh_summaries.get(vv['plate']) or {}).get('summary')
+        if s:
+            vv['summary'] = s
+            n_veh_sum += 1
+    print(f'  vehicle summaries: {n_veh_sum}/{len(enriched)} attached')
+
     _rest('POST', 'latest_run', {
         'id': 1,
         'updated_at': now_iso,
         'data': {
-            'vehicles':      _enrich_vehicles(d['vehicles']),
+            'vehicles':      enriched,
             'incidents':     d.get('incidents', []),
             'weeks':         weeks,
             'fleet_avg':     fleet_avg_1dp,

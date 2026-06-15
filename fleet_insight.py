@@ -151,12 +151,35 @@ def _fallback_summary(stats):
     return (s1 + s2).strip()
 
 
-def _ai_summary(stats):
-    """1-2 sentence summary via the Claude Messages API (raw HTTPS). Returns (text, ok)."""
+def _claude_text(prompt, max_tokens=250):
+    """One Claude Messages API call (raw HTTPS, no SDK). Returns the text, or None on
+    no-key / error / empty so callers can fall back deterministically."""
     key = os.environ.get('ANTHROPIC_API_KEY')
     if not key:
-        return _fallback_summary(stats), False
+        return None
+    body = json.dumps({
+        'model': MODEL, 'max_tokens': max_tokens,
+        'messages': [{'role': 'user', 'content': prompt}],
+    }).encode()
+    req = urllib.request.Request(
+        'https://api.anthropic.com/v1/messages', data=body, method='POST',
+        headers={'x-api-key': key, 'anthropic-version': '2023-06-01',
+                 'content-type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=40) as r:
+            data = json.load(r)
+        text = ''.join(b.get('text', '') for b in data.get('content', [])
+                       if b.get('type') == 'text').strip()
+        return text or None
+    except urllib.error.HTTPError as e:
+        print(f'  fleet_insight: Claude HTTP {e.code}: {e.read().decode()[:200]}')
+    except Exception as e:
+        print(f'  fleet_insight: Claude call failed ({e})')
+    return None
 
+
+def _ai_summary(stats):
+    """Fleet 1-2 sentence summary via Claude (qualitative). Returns (text, ai_used)."""
     comps = stats['comps']; mix = stats['mix']
 
     def c1(v):
@@ -185,28 +208,67 @@ def _ai_summary(stats):
         "count of vehicles with confirmed incidents. Do not invent any figures. No markdown, "
         "no bullet points, no preamble; reply with just the summary sentences."
     )
-    body = json.dumps({
-        'model': MODEL,
-        'max_tokens': 250,
-        'messages': [{'role': 'user', 'content': prompt}],
-    }).encode()
-    req = urllib.request.Request(
-        'https://api.anthropic.com/v1/messages', data=body, method='POST',
-        headers={'x-api-key': key, 'anthropic-version': '2023-06-01',
-                 'content-type': 'application/json'})
-    try:
-        with urllib.request.urlopen(req, timeout=40) as r:
-            data = json.load(r)
-        text = ''.join(b.get('text', '') for b in data.get('content', [])
-                       if b.get('type') == 'text').strip()
-        if text:
-            return text, True
-        print('  fleet_insight: empty AI response, using fallback')
-    except urllib.error.HTTPError as e:
-        print(f'  fleet_insight: Claude HTTP {e.code}: {e.read().decode()[:200]} — using fallback')
-    except Exception as e:
-        print(f'  fleet_insight: Claude call failed ({e}) — using fallback')
-    return _fallback_summary(stats), False
+    text = _claude_text(prompt, max_tokens=250)
+    return (text, True) if text else (_fallback_summary(stats), False)
+
+
+def _vehicle_stats(v):
+    """Per-vehicle stats computed from trips (robust — works on the lean CI scores too)."""
+    comps = _fleet_components([v])  # km-weighted per-component over this vehicle's trips
+    trips = v.get('trips', [])
+    return {
+        'make': v.get('make', 'vehicle'),
+        'avg': v.get('avg', 0),
+        'trips': len(trips),
+        'comps': comps,
+        'worst': _worst_component(comps),
+        'n_inc': sum(1 for t in trips if t.get('incident')),
+    }
+
+
+def _vehicle_fallback_summary(vs):
+    """Deterministic per-vehicle summary (no score number — the card shows it live)."""
+    make = vs['make']; worst = WNAMES.get(vs['worst'], 'cornering'); avg = vs['avg']; n_inc = vs['n_inc']
+    if avg >= 90:
+        s1 = "This vehicle is delivering outstanding driving behaviour with strong performance across the board."
+    elif avg >= 70:
+        s1 = f"The {make} is driving well overall, with {worst} the main area with room to improve."
+    elif avg >= 50:
+        s1 = f"The {make} has clear room to improve, with {worst} the primary issue holding the score back."
+    else:
+        s1 = f"The {make} needs significant attention, with {worst} consistently the main concern to address."
+    s2 = (f" {vs['n_inc']} confirmed speeding incident{'s' if n_inc != 1 else ''} recorded this period."
+          if n_inc else " No confirmed speeding incidents this period.")
+    return (s1 + s2).strip()
+
+
+def _vehicle_ai_summary(vs):
+    """Per-vehicle 1-2 sentence summary via Claude (qualitative). Returns (text, ai_used)."""
+    c = vs['comps']
+
+    def c1(x):
+        return 'n/a' if x is None else f'{x:.1f}'
+
+    prompt = (
+        "You are writing a short driving summary for ONE vehicle on a fleet-safety dashboard.\n\n"
+        "Context (for your judgement only — do NOT quote these figures verbatim):\n"
+        f"- Vehicle: {vs['make']}, {vs['trips']} trips this period.\n"
+        f"- Overall safety score: {vs['avg']}/100.\n"
+        f"- Component scores (0-100, higher is safer): Speeding {c1(c['spd'])}, "
+        f"Braking {c1(c['brk'])}, Acceleration {c1(c['acc'])}, Cornering {c1(c['crn'])}.\n"
+        f"- Weakest area: {WNAMES.get(vs['worst'], 'cornering')}.\n"
+        f"- Confirmed speeding incidents this period: {vs['n_inc']}.\n\n"
+        "Write 1-2 short sentences for a fleet manager about THIS vehicle: how it is driving "
+        "overall and the single main thing to improve (or, if it is excellent, affirm the "
+        "strong performance).\n"
+        "IMPORTANT: Do NOT state the score number, a star rating, a fleet rank, or a trend "
+        "direction — those are all shown live next to your summary and would contradict it as "
+        "the data updates. Describe performance qualitatively (e.g. 'driving well', 'room to "
+        "improve'). You MAY mention the count of confirmed incidents. Do not invent figures. "
+        "No markdown, no preamble; reply with just the sentence(s)."
+    )
+    text = _claude_text(prompt, max_tokens=200)
+    return (text, True) if text else (_vehicle_fallback_summary(vs), False)
 
 
 def build(scores_path=SCORES, cache_path=CACHE, force=False):
@@ -214,7 +276,8 @@ def build(scores_path=SCORES, cache_path=CACHE, force=False):
     cache = json.load(open(cache_path)) if os.path.exists(cache_path) else None
 
     # Weekly gate: reuse unless it's a new week (or no usable cache yet).
-    if cache and cache.get('week_of') == week_of and cache.get('summary') and not force:
+    if (cache and cache.get('week_of') == week_of and cache.get('summary')
+            and cache.get('vehicles') and not force):
         print(f'  fleet_insight: cache current for week of {week_of} — reusing (no Claude call)')
         return cache
 
@@ -237,6 +300,16 @@ def build(scores_path=SCORES, cache_path=CACHE, force=False):
     }
     summary, ai = _ai_summary(stats)
 
+    # Per-vehicle summaries (one weekly Claude call each, keyed by plate; qualitative so
+    # they never contradict the vehicle card's live score / stars / rank / trend).
+    veh_summaries = {}
+    veh_ai = 0
+    for v in vehicles:
+        vs = _vehicle_stats(v)
+        v_text, v_used = _vehicle_ai_summary(vs)
+        veh_summaries[v['plate']] = {'summary': v_text, 'ai': v_used}
+        veh_ai += 1 if v_used else 0
+
     out = {
         'week_of': week_of,
         'generated_at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
@@ -247,10 +320,11 @@ def build(scores_path=SCORES, cache_path=CACHE, force=False):
         'n_incident_vehicles': n_inc, 'risk': risk, 'risk_reason': risk_reason,
         'risk_low_min': RISK_LOW_MIN, 'risk_high_max': RISK_HIGH_MAX,
         'summary': summary, 'ai': ai,
+        'vehicles': veh_summaries,
     }
     json.dump(out, open(cache_path, 'w'))
     print(f'  fleet_insight: generated for week of {week_of} '
-          f'(risk {risk}, ai={ai}) -> {cache_path}')
+          f'(fleet risk {risk}, fleet ai={ai}, {veh_ai}/{len(vehicles)} vehicle summaries AI) -> {cache_path}')
     print(f'    {summary}')
     return out
 
