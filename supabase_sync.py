@@ -273,18 +273,30 @@ def sync(scores_path):
     _vavgs = [_precise_avg(v) for v in d['vehicles']]
     fleet_avg_1dp = round(sum(_vavgs) / len(_vavgs), 1) if _vavgs else d['fleet_avg']
     now_iso = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    # Fleet insight (weekly-cached: component stars + risk + AI summary). Embed the
+    # display fields if fleet_insight.py has produced a cache; omit otherwise.
+    fleet_insight = None
+    fi_path = os.path.join(os.path.dirname(scores_path), 'fleet_insight_cache.json')
+    if os.path.exists(fi_path):
+        fi = json.load(open(fi_path))
+        fleet_insight = {k: fi.get(k) for k in
+                         ('spd', 'brk', 'acc', 'crn', 'risk', 'summary', 'week_of')}
+        print(f'  fleet_insight: embedded (week of {fi.get("week_of")}, risk {fi.get("risk")})')
+
     _rest('POST', 'latest_run', {
         'id': 1,
         'updated_at': now_iso,
         'data': {
-            'vehicles':     _enrich_vehicles(d['vehicles']),
-            'incidents':    d.get('incidents', []),
-            'weeks':        weeks,
-            'fleet_avg':    fleet_avg_1dp,
-            'num_vehicles': d['num_vehicles'],
-            'total_trips':  d['total_trips'],
-            'fleet_trend':  d.get('fleet_trend', 0),
-            'date_range':   date_range,
+            'vehicles':      _enrich_vehicles(d['vehicles']),
+            'incidents':     d.get('incidents', []),
+            'weeks':         weeks,
+            'fleet_avg':     fleet_avg_1dp,
+            'num_vehicles':  d['num_vehicles'],
+            'total_trips':   d['total_trips'],
+            'fleet_trend':   d.get('fleet_trend', 0),
+            'date_range':    date_range,
+            'fleet_insight': fleet_insight,
         }
     })
     print(f'  latest_run: updated')

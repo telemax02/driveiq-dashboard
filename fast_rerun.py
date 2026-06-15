@@ -151,6 +151,13 @@ print(result_tt.stdout.strip())
 if result_tt.returncode != 0:
     print('Trip tracks error:', result_tt.stderr[:500])
 
+# ── STEP 7c: Fleet insight (weekly-cached component stars + risk + AI summary) ─
+print('Step 7c: Building fleet insight...')
+result_fi = subprocess.run([sys.executable, os.path.join(BASE,'fleet_insight.py')], capture_output=True, text=True)
+print(result_fi.stdout.strip())
+if result_fi.returncode != 0:
+    print('Fleet insight error:', result_fi.stderr[:500])
+
 # ── STEP 8: Sync to Supabase ──────────────────────────────────────────────
 print('Step 8: Syncing to Supabase...')
 result3 = subprocess.run([sys.executable, os.path.join(BASE,'supabase_sync.py')], capture_output=True, text=True)

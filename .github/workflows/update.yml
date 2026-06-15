@@ -40,6 +40,11 @@ jobs:
           FLESPI_TOKEN: ${{ secrets.FLESPI_TOKEN }}
         run: python trip_tracks.py
 
+      - name: Build fleet insight (weekly-cached)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python fleet_insight.py
+
       - name: Sync to Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -50,7 +55,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/index.html geo_cache.json track_cache.json
+          git add docs/index.html geo_cache.json track_cache.json fleet_insight_cache.json
           git diff --staged --quiet && echo "No changes" || (git commit -m "chore: auto-update dashboard [skip ci]" && git push)
 
       - name: Deploy to Vercel
