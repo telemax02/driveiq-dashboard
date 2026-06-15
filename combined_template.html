@@ -152,7 +152,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   ══════════════════════════════════════════ -->
   <div id="view-dash">
     <div class="stats">
-      <div class="stat" id="fleet-avg-card" style="grid-column:span 2;display:flex;gap:14px;align-items:flex-start;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div id="s-stars" style="font-size:14px;line-height:1;letter-spacing:1px;"></div><span id="s-trend"></span></div></div><div id="tier-breakdown" style="flex:1;padding-top:20px;"></div></div>
+      <div class="stat" id="fleet-avg-card" style="grid-column:span 2;display:flex;gap:14px;align-items:flex-start;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div id="s-stars" style="font-size:14px;line-height:1;letter-spacing:1px;"></div></div></div><div id="tier-breakdown" style="flex:1;padding-top:20px;"></div></div>
     </div>
     <div class="main">
       <div><div class="slabel">Vehicle ranking &mdash; click to view trips</div><div id="ranking"></div></div>
@@ -695,10 +695,6 @@ async function loadDashboardData(){
     upEl.textContent=dt.toLocaleDateString([],{day:'2-digit',month:'short',year:'numeric'})
       +' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   }
-  document.getElementById('s-trend').innerHTML=
-    ft>0?'<span style="font-size:10px;font-weight:600;color:var(--success);">&#8679; +'+ft+'</span>'
-    :ft<0?'<span style="font-size:10px;font-weight:600;color:var(--danger);">&#8681; '+ft+'</span>'
-    :'<span style="font-size:10px;color:var(--text3);">&#8594; stable</span>';
   // Recalculate leaderboard week index
   var now=Date.now()/1000;
   lbIdx=Math.max(0,weeksData.length-1);
