@@ -33,7 +33,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .bwrap{flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;} .bfill{height:100%;border-radius:2px;}
 .trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;}
 .comps{display:flex;gap:6px;} .comp{text-align:center;flex:1;}
-.comp .ck{font-size:10px;color:var(--text3);} .comp .cv{font-size:13px;font-weight:500;margin-top:2px;} .comp .cs{font-size:15px;color:var(--gold);margin-top:2px;line-height:1;letter-spacing:1px;}
+.comp .ck{font-size:11px;color:var(--text2);} .comp .cv{font-size:13px;font-weight:500;margin-top:2px;} .comp .cs{font-size:15px;color:var(--gold);margin-top:2px;line-height:1;letter-spacing:1px;}
 .tag{font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;}
 .td{background:var(--danger-bg);color:var(--danger);} .tw{background:var(--warning-bg);color:var(--warning);}
 .ts{background:var(--success-bg);color:var(--success);} .tl{background:var(--info-bg);color:var(--info);}
@@ -421,18 +421,18 @@ function selectV(plate){
   el.innerHTML='';
   sumEl.innerHTML='<div style="background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--info);">'
     +'<div style="font-size:16px;font-weight:700;color:var(--text);line-height:1.15;">'+(drName||v.plate)+'</div>'
-    +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">'+v.plate+' &middot; '+v.make+' &middot; '+v.trips.length+' trip'+(v.trips.length!==1?'s':'')+' scored</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-bottom:10px;">'+v.plate+' &middot; '+v.make+' &middot; '+v.trips.length+' trip'+(v.trips.length!==1?'s':'')+' scored</div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
       +(v.rank===1?'<span style="font-size:22px;">🥇</span>':v.rank===2?'<span style="font-size:22px;">🥈</span>':v.rank===3?'<span style="font-size:22px;">🥉</span>':'')
-      +'<span style="font-size:11px;font-weight:500;color:var(--text3);">Fleet rank</span>'
+      +'<span style="font-size:11px;font-weight:500;color:var(--text2);">Fleet rank</span>'
       +'<span style="font-size:18px;font-weight:500;">#'+v.rank+'</span>'
-      +'<span style="font-size:11px;color:var(--text3);">of '+vehicles.length+' vehicles</span>'
+      +'<span style="font-size:11px;color:var(--text2);">of '+vehicles.length+' vehicles</span>'
       +trendBadge
       +'<div style="margin-left:auto;display:flex;gap:4px;align-items:center;">'
       +[['Speeding',v.spd_avg],['Braking',v.brk_avg],['Acceleration',v.acc_avg],['Cornering',v.crn_avg]].map(function(p){
           var lbl=p[0],val=p[1];
-          if(val===null||val===undefined)return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:12px;color:var(--text3);">—</div></div>';
-          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:14px;color:var(--gold);line-height:1;letter-spacing:1px;margin-top:3px;">'+starsN(val)+'</div></div>';
+          if(val===null||val===undefined)return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:10px;color:var(--text2);">'+lbl+'</div><div style="font-size:12px;color:var(--text3);">—</div></div>';
+          return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:10px;color:var(--text2);">'+lbl+'</div><div style="font-size:14px;color:var(--gold);line-height:1;letter-spacing:1px;margin-top:3px;">'+starsN(val)+'</div></div>';
       }).join('')
       +'</div>'
       +(v.avg>=100?'<span style="font-size:14px;margin-right:3px;">🏆</span>':v.avg>=90?'<span style="font-size:14px;margin-right:3px;">💎</span>':'')
@@ -680,21 +680,19 @@ function renderFleetInsight(fi){
   var badge=fi.risk?('<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;'
     +'letter-spacing:.5px;text-transform:uppercase;color:'+rcol+';border:1px solid '+rcol+';border-radius:11px;padding:2px 9px;">'
     +'<i class="ti ti-shield-half-filled" style="font-size:12px;"></i>'+esc(fi.risk)+' risk</span>'):'';
-  var bands=[['High','&lt;'+f1(hi),'var(--danger)'],['Moderate',f1(hi)+'–'+f1(lo),'var(--warning)'],['Low','&ge;'+f1(lo),'var(--success)']];
-  var legend=bands.map(function(b){
-    var on=(b[0]===fi.risk);
-    return '<span style="color:'+(on?b[2]:'var(--text3)')+';'+(on?'font-weight:600;':'')+'">'+b[0]+' '+b[1]+'</span>';
-  }).join('<span style="color:var(--text3);"> · </span>');
-  var riskBlock=fi.risk?('<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">'
-    +badge+'<span style="font-size:8.5px;white-space:nowrap;">'+legend+'</span></div>'):'';
+  // show only the current band's range (its edges still tell you when you'd cross into the next band)
+  var bands={High:'&lt;'+f1(hi),Moderate:f1(hi)+'–'+f1(lo),Low:'&ge;'+f1(lo)};
+  var legend=(fi.risk&&bands[fi.risk])?('<span style="color:'+rcol+';font-weight:600;">'+esc(fi.risk)+' '+bands[fi.risk]+'</span>'):'';
+  var riskBlock=fi.risk?('<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">'
+    +badge+'<span style="font-size:10px;white-space:nowrap;">'+legend+'</span></div>'):'';
 
   // trip mix (short / standard / long)
   var sh=fi.short||0, st=fi.standard||0, lg=fi.long||0, tot=sh+st+lg;
   function pct(n){return tot?Math.round(n/tot*100):0;}
   function seg(n,lab){return '<span><b style="color:var(--text);">'+n+'</b> '+lab
-    +' <span style="color:var(--text3);">('+pct(n)+'%)</span></span>';}
-  var mix=tot?('<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:9px;font-size:10.5px;color:var(--text2);">'
-    +'<span style="color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-size:9px;">Trip mix</span>'
+    +' <span style="color:var(--text2);">('+pct(n)+'%)</span></span>';}
+  var mix=tot?('<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:9px;font-size:12px;color:var(--text2);">'
+    +'<span style="color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-size:10px;font-weight:600;">Trip mix</span>'
     +seg(sh,'short')+seg(st,'standard')+seg(lg,'long')+'</div>'):'';
 
   el.innerHTML=
