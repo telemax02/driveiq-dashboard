@@ -26,7 +26,10 @@ def score_trip(t, fleet_mean):
         spd=sub(sx/cv,0,1.0); raw=round(spd_w*spd+brk_w*brk+crn_w*crn+acc_w*acc)
     else:
         spd=None; raw=round(brk_w*brk+crn_w*crn+acc_w*acc)
-    shrink=min(1.0,km/15); total=round(shrink*raw+(1-shrink)*fleet_mean)
+    # No per-trip shrink: components are already distance-normalized, so a clean
+    # short trip earns its full score. (Reliability handling, if added, belongs at
+    # the vehicle-aggregate level, not per trip.) total == raw.
+    total=raw
     mx=t.get('max_speed_over_limit_kmh',0); ex=t.get('speeding_excess_kmh_s',0)
     dt=datetime.datetime.utcfromtimestamp(t['begin']+BNE)
     sl=t.get('start_location',{}); el=t.get('end_location',{})
