@@ -415,6 +415,7 @@ function initLeafletMap(mapDiv){
   if(mapDiv._mapDone)return;mapDiv._mapDone=true;
   const slat=+mapDiv.dataset.slat,slon=+mapDiv.dataset.slon;
   const elat=+mapDiv.dataset.elat,elon=+mapDiv.dataset.elon;
+  const tid=mapDiv.dataset.tid;
   const map=L.map(mapDiv,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
   const sIcon=L.divIcon({html:'<div style="background:#22c55e;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
@@ -422,15 +423,27 @@ function initLeafletMap(mapDiv){
   L.marker([slat,slon],{icon:sIcon}).addTo(map);
   L.marker([elat,elon],{icon:eIcon}).addTo(map);
   map.fitBounds([[slat,slon],[elat,elon]],{padding:[18,18]});
-  fetch('https://router.project-osrm.org/route/v1/driving/'+slon+','+slat+';'+elon+','+elat+'?overview=full&geometries=geojson')
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(data.routes&&data.routes[0]){
-        const coords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
-        const pl=L.polyline(coords,{color:'#1e3a8a',weight:3,opacity:0.9}).addTo(map);
-        map.fitBounds(pl.getBounds(),{padding:[18,18]});
-      }
-    }).catch(function(){});
+  function osrm(){
+    fetch('https://router.project-osrm.org/route/v1/driving/'+slon+','+slat+';'+elon+','+elat+'?overview=full&geometries=geojson')
+      .then(function(r){return r.json();})
+      .then(function(data){
+        if(data.routes&&data.routes[0]){
+          const coords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
+          const pl=L.polyline(coords,{color:'#1e3a8a',weight:3,opacity:0.9}).addTo(map);
+          map.fitBounds(pl.getBounds(),{padding:[18,18]});
+        }
+      }).catch(function(){});
+  }
+  // Prefer the real driven GPS track (lazy per-thumbnail); fall back to OSRM estimate
+  if(tid){
+    _sb.from('trip_tracks').select('track').eq('trip_id',tid).maybeSingle().then(function(res){
+      var tk=(res&&!res.error&&res.data)?res.data.track:null;
+      if(tk&&tk.length>1){
+        const pl=L.polyline(tk,{color:'#1e3a8a',weight:3,opacity:0.9}).addTo(map);
+        map.fitBounds(pl.getBounds(),{padding:[14,14]});
+      }else{osrm();}
+    }).catch(function(){osrm();});
+  }else{osrm();}
 }
 
 // ── Expanded trip map: real GPS track + harsh-event locations ───────────────
