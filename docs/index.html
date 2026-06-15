@@ -228,7 +228,7 @@ function driverInitials(d){ var f=(d.first||'').trim(),l=(d.last||'').trim(); re
 const GOLD='#EF9F27';
 function sc(s){if(s>=90)return'var(--success)';if(s>=70)return'var(--info)';if(s>=50)return'var(--warning)';return'var(--danger)';}
 function stars(s){if(s>=90)return'★★★★★';if(s>=80)return'★★★★☆';if(s>=70)return'★★★☆☆';if(s>=60)return'★★☆☆☆';return'★☆☆☆☆';}
-function starsN(s){return'★'.repeat(s>=90?5:s>=80?4:s>=70?3:s>=60?2:1);}
+function starsN(s){var n=s>=90?5:s>=80?4:s>=70?3:s>=60?2:1;return'★'.repeat(n)+(n<5?'<span style="color:var(--text3);">'+'★'.repeat(5-n)+'</span>':'');}
 function tot(t){if(t.lc)return Math.round(0.364*t.brk+0.364*t.crn+0.273*t.acc);return Math.round(0.45*t.spd+0.20*t.brk+0.20*t.crn+0.15*t.acc);}
 function tripSize(km){if(km<10)return'short';if(km>=25)return'long';return'standard';}
 function trendIcon(t,sz){sz=sz||13;if(t==='improving')return'<i class="ti ti-trending-up" style="font-size:'+sz+'px;color:var(--success);" title="Improving"></i>';if(t==='declining')return'<i class="ti ti-trending-down" style="font-size:'+sz+'px;color:var(--danger);" title="Declining"></i>';if(t==='stable')return'<i class="ti ti-minus" style="font-size:'+sz+'px;color:var(--text3);" title="Stable"></i>';return'<span style="color:var(--text3);font-size:10px;">—</span>';}
