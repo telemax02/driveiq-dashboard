@@ -353,8 +353,8 @@ function selectV(plate){
       {k:'Cornering',v:t.crn,w:t.lc?0.364:0.20,mx:t.lc?36:20}
     ];
     const cH=comps.map(function(c){
-      if(c.v===null)return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cv" style="color:var(--text3)">—</div><div class="cs">—</div></div>';
-      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cv" style="color:'+sc(c.v)+';">'+Math.round(c.v)+'</div><div class="cs">'+starsN(c.v)+'</div></div>';
+      if(c.v===null)return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs">—</div></div>';
+      return'<div class="comp"><div class="ck">'+c.k+'</div><div class="cs">'+starsN(c.v)+'</div></div>';
     }).join('');
     const sz=tripSize(t.km);
     const szTag=sz==='short'?'<span class="tag ts" style="margin-left:4px;" data-tip="Short trip: under 10km">Short trip</span>'
@@ -381,7 +381,6 @@ function selectV(plate){
         +'</div>'
         +'<div style="text-align:right;flex-shrink:0;">'
           +(score===100?'<span style="font-size:13px;margin-right:3px;">🏆</span>':score>=90?'<span style="font-size:13px;margin-right:3px;">💎</span>':'')+'<span style="font-size:20px;font-weight:500;color:'+sc(score)+';">'+score+'</span>'
-          +'<span style="font-size:12px;color:'+GOLD+';margin-left:3px;">'+stars(score)+'</span>'
         +'</div>'
       +'</div>'
       +'<div class="comps">'+cH+'</div>'
