@@ -381,14 +381,14 @@ function selectV(plate){
           +(t.from?'<div style="font-size:11px;color:var(--text3);margin-top:4px;"><i class="ti ti-map-pin" style="font-size:10px;vertical-align:-1px;color:var(--info);"></i> <span style="color:var(--text2);">'+t.from+'</span>'+(t.to?' &rarr; <span style="color:var(--text2);">'+t.to+'</span>':'')+'</div>':'')
         +'</div>'
         +'<div style="text-align:right;flex-shrink:0;">'
-          +(score===100?'<span style="font-size:13px;margin-right:3px;">🏆</span>':score>=90?'<span style="font-size:13px;margin-right:3px;">💎</span>':'')+'<span style="font-size:20px;font-weight:500;color:'+sc(score)+';">'+score+'</span>'
+          +(score===100?'<span style="font-size:13px;margin-right:3px;">🏆</span>':score>=90?'<span style="font-size:13px;margin-right:3px;">💎</span>':'')+'<span style="font-size:20px;font-weight:500;color:'+sc(score)+';">'+fmt1(score)+'</span>'
         +'</div>'
       +'</div>'
       +'<div class="comps">'+cH+'</div>'
       +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">'
         +'<span style="font-size:10px;color:var(--text3);white-space:nowrap;">Total</span>'
         +'<div class="bwrap" style="height:5px;"><div class="bfill" style="width:'+score+'%;background:'+sc(score)+';"></div></div>'
-        +'<span style="font-size:11px;font-weight:500;color:'+sc(score)+';white-space:nowrap;">'+score+'/100</span>'+(t.raw!==score?'<span style="font-size:9px;color:var(--text3);margin-left:4px;">(raw '+t.raw+')</span>':'')
+        +'<span style="font-size:11px;font-weight:500;color:'+sc(score)+';white-space:nowrap;">'+fmt1(score)+'/100</span>'
       +'</div>';
     card.appendChild(infoDiv);
     let mapDiv=null;
