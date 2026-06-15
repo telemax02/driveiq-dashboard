@@ -72,7 +72,7 @@ def _compute_weeks(vehicles):
         rankings = []
         for plate, trps in veh_week.items():
             km = sum(t['km'] for t in trps) or 1
-            sc = round(sum(t.get('total', t.get('raw', 0)) * t['km'] for t in trps) / km)
+            sc = round(sum(t.get('total', t.get('raw', 0)) * t['km'] for t in trps) / km, 1)  # 1 dp for tie-break display
             spd_t = [t for t in trps if t.get('spd') is not None]
             spd = round(sum(t['spd'] * t['km'] for t in spd_t) / sum(t['km'] for t in spd_t)) if spd_t else None
             prev_trps = prev_veh.get(plate, [])
@@ -101,10 +101,17 @@ def _compute_weeks(vehicles):
     return out
 
 
+def _precise_avg(v):
+    """km-weighted mean of trip totals, unrounded (for 1-dp display + tie-correct sort)."""
+    trips = v.get('trips', [])
+    km = sum(t.get('km', 0) for t in trips) or 1
+    return sum(t.get('total', t.get('raw', 0)) * t.get('km', 0) for t in trips) / km
+
+
 def _enrich_vehicles(vehicles):
     """Compute rank, comp_avgs, trend and flatten for template JS.
     score_v2.py sorts vehicles but doesn't add these fields."""
-    sorted_vehs = sorted(vehicles, key=lambda v: v['avg'], reverse=True)
+    sorted_vehs = sorted(vehicles, key=_precise_avg, reverse=True)
 
     # Compute per-vehicle weekly scores to derive trend
     week_scores = {}  # plate -> {wk_ts -> score}
@@ -125,6 +132,7 @@ def _enrich_vehicles(vehicles):
     for i, v in enumerate(sorted_vehs):
         vv = dict(v)
         vv['rank'] = i + 1
+        vv['avg'] = round(_precise_avg(v), 1)  # 1 decimal so near-ties are distinguishable
 
         # comp_avgs from trips
         trips = v.get('trips', [])
@@ -261,6 +269,9 @@ def sync(scores_path):
     # ── latest_run (live dashboard snapshot) ──────────────────────────────
     weeks = _compute_weeks(d['vehicles'])
     date_range = _date_range(d['vehicles'])
+    # fleet average to 1 dp (mean of per-vehicle precise averages)
+    _vavgs = [_precise_avg(v) for v in d['vehicles']]
+    fleet_avg_1dp = round(sum(_vavgs) / len(_vavgs), 1) if _vavgs else d['fleet_avg']
     now_iso = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     _rest('POST', 'latest_run', {
         'id': 1,
@@ -269,7 +280,7 @@ def sync(scores_path):
             'vehicles':     _enrich_vehicles(d['vehicles']),
             'incidents':    d.get('incidents', []),
             'weeks':        weeks,
-            'fleet_avg':    d['fleet_avg'],
+            'fleet_avg':    fleet_avg_1dp,
             'num_vehicles': d['num_vehicles'],
             'total_trips':  d['total_trips'],
             'fleet_trend':  d.get('fleet_trend', 0),

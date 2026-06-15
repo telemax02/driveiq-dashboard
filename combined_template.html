@@ -227,6 +227,7 @@ async function initDrivers(){
 function driverInitials(d){ var f=(d.first||'').trim(),l=(d.last||'').trim(); return (f||l)?(f[0]||'')+(l[0]||''):'?'; }
 const GOLD='#EF9F27';
 function sc(s){if(s>=90)return'var(--success)';if(s>=70)return'var(--info)';if(s>=50)return'var(--warning)';return'var(--danger)';}
+function fmt1(x){return (x==null||isNaN(x))?'—':(+x).toFixed(1);} // scores shown to 1 decimal
 function starN(s){return s>=100?5:s>=90?4:s>=80?3:s>=70?2:1;} // whole stars; 5 only at 100, so 99=4
 function starsHtml(s){var n=starN(s);return'<span style="color:var(--gold);">'+'★'.repeat(n)+'</span>'+(n<5?'<span style="color:var(--text3);">'+'★'.repeat(5-n)+'</span>':'');}
 function stars(s){return starsHtml(s);}
@@ -284,7 +285,7 @@ function renderRanking(){
         '<div class="bwrap"><div class="bfill" style="width:'+v.avg+'%;background:'+sc(v.avg)+';"></div></div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:54px;">'+
-        '<div style="font-size:14px;font-weight:500;color:'+sc(v.avg)+';">'+v.avg+'</div>'+
+        '<div style="font-size:14px;font-weight:500;color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</div>'+
         ti+
       '</div>';
     row.onclick=function(){selectV(v.plate);};
@@ -337,7 +338,7 @@ function selectV(plate){
           return'<div style="background:var(--bg3);border-radius:6px;padding:5px 10px;text-align:center;min-width:72px;"><div style="font-size:9px;color:var(--text3);">'+lbl+'</div><div style="font-size:13px;font-weight:600;color:'+sc(val)+';">'+val+'</div></div>';
       }).join('')
       +'</div>'
-      +'<span style="font-size:20px;font-weight:500;color:'+sc(v.avg)+';">'+v.avg+'</span>'
+      +'<span style="font-size:20px;font-weight:500;color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</span>'
       +'<span style="font-size:12px;color:#EF9F27;">'+stars(v.avg)+'</span>'
     +'</div>'
     +(v.summary?'<p style="font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:10px;">'+v.summary+'</p>':'')
@@ -587,7 +588,7 @@ async function loadDashboardData(){
   weeksData=d.weeks||[];
   // Stat cards
   var fa=d.fleet_avg||0, ft=d.fleet_trend||0;
-  document.getElementById('s-avg').textContent=fa;
+  document.getElementById('s-avg').textContent=fmt1(fa);
   document.getElementById('s-trips').textContent=d.total_trips||'';
   document.getElementById('s-vehs').textContent=d.num_vehicles||'';
   document.querySelectorAll('.s-range').forEach(function(el){ el.textContent=d.date_range||''; });
@@ -656,7 +657,7 @@ function renderLeaderboard(){
         +'<span class="podium-medal">'+medals[idx]+'</span>'
         +(drName(r.plate)?'<div class="podium-plate">'+drName(r.plate)+'</div>'+'<div class="podium-make">'+r.plate+' &middot; '+r.make+(drAge(r.plate)?' &middot; '+drAge(r.plate):'')+'</div>'
         :'<div class="podium-plate">'+r.plate+'</div>'+'<div class="podium-make">'+r.make+'</div>')
-        +'<div class="podium-score" style="color:'+sc(r.score)+';">'+r.score+'</div>'
+        +'<div class="podium-score" style="color:'+sc(r.score)+';">'+fmt1(r.score)+'</div>'
         +'<div style="font-size:10px;color:'+GOLD+';margin-top:2px;">'+stars(r.score)+'</div>'
         +'<div class="podium-trips">'+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'
         +'<div class="podium-comps">'
@@ -683,7 +684,7 @@ function renderLeaderboard(){
         +'<div style="font-size:10px;color:var(--text3);">'+(drName(r.plate)?r.plate+' &middot; ':'')+r.make+' &middot; '+r.trips+' trip'+(r.trips!==1?'s':'')+'</div>'+(r.short||r.std||r.lng?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">'+(r.short?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--success-bg);color:var(--success);">'+r.short+' Short</span>':'')+(r.std?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);">'+r.std+' Standard</span>':'')+(r.lng?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--info-bg);color:var(--info);">'+r.lng+' Long</span>':'')+'</div>':'')
         +'<div class="bwrap"><div class="bfill" style="width:'+r.score+'%;background:'+sc(r.score)+';"></div></div>'
       +'</div>'
-      +'<div class="sc-cell hide-m" style="color:'+sc(r.score)+';">'+r.score+'</div>'
+      +'<div class="sc-cell hide-m" style="color:'+sc(r.score)+';">'+fmt1(r.score)+'</div>'
       +'<div class="comp-cell">'+cv(r.spd)+'</div>'
       +'<div class="comp-cell">'+cv(r.brk)+'</div>'
       +'<div class="comp-cell hide-m">'+cv(r.acc)+'</div>'
@@ -722,7 +723,7 @@ function renderDrivers(){
           +'<div class="dr-make">'+v.make+'</div>'
           +(hasName?'<div class="dr-name-tag">'+((d.first||'')+' '+(d.last||'')).trim()+'</div>':'')
         +'</div>'
-        +'<div class="dr-score" style="color:'+sc(v.avg)+';">'+v.avg+'</div>'
+        +'<div class="dr-score" style="color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</div>'
       +'</div>'
       +'<div class="dr-fields">'
         +'<div class="dr-row">'
