@@ -138,6 +138,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <button class="tab active" id="tab-dash" onclick="switchTab('dash')"><i class="ti ti-layout-dashboard" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Dashboard</button>
       <button class="tab" id="tab-lb" onclick="switchTab('lb')"><i class="ti ti-trophy" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--gold);"></i>Weekly Leaderboard</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
+      <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
     </div>
     <span class="badge">Pre-calibration</span>
   </div>
@@ -210,6 +211,84 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     </div>
     <div class="dr-grid" id="dr-grid"></div>
   </div>
+
+  <!-- ══════════════════════════════════════════
+       FAQ VIEW
+  ══════════════════════════════════════════ -->
+  <div id="view-faq" style="display:none;">
+    <div style="max-width:840px;margin:0 auto;">
+      <h2 style="font-size:22px;font-weight:600;color:var(--text);margin:4px 0 6px;">How DriveIQ works</h2>
+      <p style="font-size:13px;color:var(--text2);line-height:1.65;margin:0 0 8px;">DriveIQ turns each vehicle's own GPS tracking data into a simple, fair safety score. Every score is built from how the vehicle was <b style="color:var(--text);">actually driven</b> — not from anyone's opinion — and the exact same rules are applied to every vehicle. Here's how it works, in plain English.</p>
+      <div style="background:var(--success-bg);border:0.5px solid var(--success);border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12.5px;color:var(--success);line-height:1.55;"><i class="ti ti-shield-check" style="vertical-align:-1px;margin-right:4px;"></i> Fair by design: same rules for everyone, based on real data, using thresholds that match recognised industry standards.</div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-info-circle" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>What is DriveIQ?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">Every vehicle has a GPS tracker that records how it moves — its speed, location and direction. DriveIQ reads that data and gives each journey a safety score out of 100. Because it's built entirely from the vehicle's own data, every driver is measured the same way, on facts rather than judgement.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-eye" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>What does it look at?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">The four behaviours that matter most for safety:<br>
+          &bull; <b style="color:var(--text);">Speeding</b> — driving over the road's speed limit.<br>
+          &bull; <b style="color:var(--text);">Harsh braking</b> — slowing down much harder than normal.<br>
+          &bull; <b style="color:var(--text);">Harsh acceleration</b> — speeding up much faster than normal.<br>
+          &bull; <b style="color:var(--text);">Harsh cornering</b> — taking a corner too fast or too sharply.<br>
+          Smooth, everyday driving isn't flagged — only the genuinely sharp or unsafe moments count.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-route" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>What counts as a "trip"?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">A trip is a single journey — from when the engine starts to when it's switched off. Parking ends the trip. So a morning drive and an evening drive are scored separately, and an overnight park is never lumped together into one long trip.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-gauge" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>How is speeding decided?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">DriveIQ knows the posted speed limit for the road from mapping data. You're only flagged when you go <b style="color:var(--text);">more than 8% over</b> that limit — a deliberate buffer so a momentary GPS wobble or being a fraction over doesn't count against you. A <b style="color:var(--text);">confirmed speeding incident</b> (the serious kind) only counts when the vehicle is at least 20 km/h over the limit for at least 30 seconds.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-alert-triangle" style="color:var(--warning);vertical-align:-1px;margin-right:6px;"></i>How are harsh braking, acceleration and cornering decided?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">These come down to how forcefully the vehicle changes speed or direction — the kind of push you feel in your seat when someone brakes or corners hard. Gentle driving stays well under the line; only firm, jolting movements register. Each one is graded <b style="color:#97c459;">Mild</b>, <b style="color:#EF9F27;">Moderate</b> or <b style="color:#ef4444;">Severe</b> so you can see how strong it was.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-scale" style="color:var(--success);vertical-align:-1px;margin-right:6px;"></i>Is it fair? Does it use industry standards?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">Yes — and deliberately so. The points at which a movement counts as "harsh", and the small speeding buffer, are set to match the levels used right across the fleet-safety and vehicle-insurance industry. We haven't invented our own stricter rules — the thresholds line up with recognised industry benchmarks, so a score here means the same thing it would on other professional systems.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-star" style="color:var(--gold);vertical-align:-1px;margin-right:6px;"></i>How is a trip scored?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">Each trip is judged on those four behaviours and given a score out of 100 — higher is better. Speeding carries the most weight because it's the biggest safety risk, followed by braking, cornering and acceleration. The star rating is just a quick visual of the same score (five stars = as close to perfect as it gets).</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-chart-bar" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>How is a vehicle's overall score worked out?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">It's the average of all that vehicle's trips, weighted by distance — so a long highway trip counts for more than a quick run down the road, which reflects real driving. Scores are shown to one decimal place so two vehicles that are very close can still be told apart.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-ruler-2" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>Are short trips treated fairly?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">Absolutely. A short trip driven perfectly scores just as highly as a long one — you're never marked down simply for a trip being short. Tiny movements, like shuffling around a car park, are left out entirely so they can't distort anything.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-map-2" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>What do the maps show?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">The map on each trip shows the <b style="color:var(--text);">real route</b> the vehicle drove. If anything was flagged — speeding, harsh braking, cornering or acceleration — there's a marker at the exact spot it happened. Click a trip's map to open it full-size, then tap any marker to see what happened and when.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-map-pin-question" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>What if the speed limit for a road isn't known?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">DriveIQ never guesses. If reliable speed-limit data isn't available for part of a trip, speeding simply isn't scored there — so you're never penalised on an assumption.</div>
+      </div>
+
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-list-numbers" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>Why are two drivers on the same score ranked differently?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">Behind the number on screen there's a more precise score. Two drivers might both show 99 — but one may be 99.4 and the other 99.1. The ranking always reflects that real difference, so the order is never down to chance.</div>
+      </div>
+
+      <p style="font-size:12.5px;color:var(--text3);line-height:1.6;margin:16px 2px 24px;text-align:center;">Every vehicle is measured by exactly the same rules, on its own real driving data — and that's what makes the comparison fair.</p>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -246,9 +325,11 @@ function switchTab(tab){
   document.getElementById('view-dash').style.display    = tab==='dash'?'':'none';
   document.getElementById('view-lb').style.display      = tab==='lb'?'':'none';
   document.getElementById('view-drivers').style.display = tab==='drivers'?'':'none';
+  document.getElementById('view-faq').style.display     = tab==='faq'?'':'none';
   document.getElementById('tab-dash').classList.toggle('active',    tab==='dash');
   document.getElementById('tab-lb').classList.toggle('active',      tab==='lb');
   document.getElementById('tab-drivers').classList.toggle('active', tab==='drivers');
+  document.getElementById('tab-faq').classList.toggle('active',     tab==='faq');
   if(tab==='lb') renderLeaderboard();
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
