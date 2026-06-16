@@ -1,17 +1,17 @@
--- ============================================================================
--- DriveIQ — authentication, roles & row-level security setup
--- Run this in Supabase → SQL Editor.
+-- ===========================================================================
+-- DriveIQ - authentication, roles and row-level security setup
+-- Run this in Supabase -> SQL Editor.
 --
 -- PART A is ADDITIVE and safe to run now. It does NOT change who can read the
--- existing data — it only adds the profiles table, the admin role, and helpers.
+-- existing data - it only adds the profiles table, the admin role and helpers.
 --
 -- PART B turns on Row-Level Security (makes the data require a signed-in user).
 -- DO NOT run Part B until the login gate is deployed on the dashboard, or the
--- public page will lose read access and go blank. We'll run it in Phase 3.
--- ============================================================================
+-- public page will lose read access and go blank. We will run it in Phase 3.
+-- ===========================================================================
 
 
--- ========================= PART A — run now (safe) ==========================
+-- ========================= PART A - run now (safe) =========================
 
 -- One profile row per auth user, carrying the role.
 create table if not exists public.profiles (
@@ -60,7 +60,7 @@ insert into public.profiles (id, email, role)
 select id, email, 'user' from auth.users
 on conflict (id) do nothing;
 
--- Lock down the profiles table itself (safe — only governs this new table).
+-- Lock down the profiles table itself (safe - only governs this new table).
 alter table public.profiles enable row level security;
 
 drop policy if exists profiles_read on public.profiles;
@@ -73,14 +73,14 @@ create policy profiles_admin_update on public.profiles
   for update to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
--- >>> AFTER you have created your own account (Supabase → Auth → Users → Add user,
---     email + password), make yourself the admin by running:
+-- AFTER you have created your own account (Supabase -> Auth -> Users -> Add user,
+-- email + password), make yourself the admin by running:
 --
---     update public.profiles set role = 'admin'
---     where email = 'ash.phayer@telemax.com.au';
+--   update public.profiles set role = 'admin'
+--   where email = 'ash.phayer@telemax.com.au';
 
 
--- ============== PART B — RUN ONLY AFTER THE LOGIN GATE IS LIVE ===============
+-- ============== PART B - RUN ONLY AFTER THE LOGIN GATE IS LIVE ==============
 -- Prerequisites before running:
 --   1. The dashboard login screen is deployed (Phase 2).
 --   2. The CI pipeline is writing with the SECRET key (SUPABASE_SECRET_KEY),
