@@ -470,6 +470,15 @@ function renderRanking(){
   });
 }
 
+// Size the trips list to fill down to the bottom of the viewport (instead of a
+// fixed height). Recomputed on each selection + on resize; content above it
+// (fleet panel, driver summary card) varies in height, so we measure live.
+function fitTripsHeight(){
+  var t=document.getElementById('trips'); if(!t||!t.offsetParent) return;
+  var top=t.getBoundingClientRect().top;
+  t.style.maxHeight=Math.max(300, Math.round(window.innerHeight - top - 20))+'px';
+}
+window.addEventListener('resize', fitTripsHeight);
 function selectV(plate){
   sel=plate;renderRanking();
   const v=vehicles.find(function(x){return x.plate===plate;});
@@ -605,6 +614,7 @@ function selectV(plate){
       mapObserver.observe(mapDiv);
     }
   });
+  requestAnimationFrame(fitTripsHeight);
 }
 
 function initLeafletMap(mapDiv){
