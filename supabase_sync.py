@@ -9,7 +9,10 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 from fleet_insight import _fleet_components, _trip_mix, _risk, RISK_LOW_MIN, RISK_HIGH_MAX
 
 SUPA_URL = os.environ['SUPABASE_URL']
-SUPA_KEY = os.environ['SUPABASE_KEY']
+# Writes must use the SECRET key (sb_secret_…) so they bypass row-level security
+# once RLS is enabled. Falls back to the publishable key until the secret is added,
+# so the pipeline keeps working in the meantime.
+SUPA_KEY = os.environ.get('SUPABASE_SECRET_KEY') or os.environ['SUPABASE_KEY']
 
 
 def _rest(method, table, payload):
