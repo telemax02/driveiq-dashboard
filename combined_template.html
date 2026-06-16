@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DriveIQ — Intelligent Driving Analytics</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -156,8 +157,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     <label for="login-email" style="display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;">Email</label>
     <input id="login-email" type="email" autocomplete="username" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:9px 11px;outline:none;margin-bottom:14px;">
     <label for="login-pw" style="display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;">Password</label>
-    <input id="login-pw" type="password" autocomplete="current-password" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:9px 11px;outline:none;margin-bottom:16px;">
+    <input id="login-pw" type="password" autocomplete="current-password" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:9px 11px;outline:none;margin-bottom:10px;">
+    <div style="text-align:right;margin-bottom:14px;"><a href="#" id="forgot-link" onclick="forgotPassword();return false;" style="font-size:11px;color:var(--text2);text-decoration:none;">Forgot your password?</a></div>
     <div id="login-err" style="display:none;font-size:12px;color:var(--danger);margin-bottom:12px;line-height:1.4;"></div>
+    <div id="login-msg" style="display:none;font-size:12px;color:var(--success);margin-bottom:12px;line-height:1.4;"></div>
     <button id="login-btn" type="submit" style="width:100%;background:#7cb83e;color:#13260b;font-weight:700;font-size:14px;border:none;border-radius:8px;padding:11px;cursor:pointer;">Sign in</button>
     <div style="display:flex;align-items:center;gap:10px;margin:16px 0 14px;"><div style="flex:1;height:1px;background:var(--border);"></div><span style="font-size:11px;color:var(--text3);">or</span><div style="flex:1;height:1px;background:var(--border);"></div></div>
     <button type="button" onclick="ssoLogin('azure')" style="width:100%;background:var(--bg3);color:var(--text);font-weight:600;font-size:13px;border:0.5px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;"><i class="ti ti-brand-windows" style="font-size:15px;color:#0078d4;"></i>Sign in with Microsoft</button>
@@ -881,7 +884,7 @@ function showSetPassword(){
 async function doLogin(ev){
   if(ev) ev.preventDefault();
   var btn=document.getElementById('login-btn'), err=document.getElementById('login-err');
-  err.style.display='none';
+  err.style.display='none'; var lm=document.getElementById('login-msg'); if(lm) lm.style.display='none';
   var email=(document.getElementById('login-email').value||'').trim();
   var pw=document.getElementById('login-pw').value||'';
   if(!email||!pw){ err.textContent='Enter your email and password.'; err.style.display='block'; return; }
@@ -890,6 +893,20 @@ async function doLogin(ev){
   btn.disabled=false; btn.textContent='Sign in';
   if(res.error){ err.textContent=res.error.message||'Sign-in failed.'; err.style.display='block'; return; }
   showApp();
+}
+// Self-service password reset from the login screen. Sends a recovery email; the
+// link returns to this page (#type=recovery) -> the set-password screen.
+async function forgotPassword(){
+  var err=document.getElementById('login-err'), msg=document.getElementById('login-msg');
+  var email=(document.getElementById('login-email').value||'').trim();
+  err.style.display='none'; if(msg) msg.style.display='none';
+  if(!email){ err.textContent='Enter your email above first, then click "Forgot your password?".'; err.style.display='block'; return; }
+  var link=document.getElementById('forgot-link'), lt=link?link.textContent:'';
+  if(link){ link.textContent='Sending…'; link.style.pointerEvents='none'; }
+  var r=await _sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  if(link){ link.textContent=lt; link.style.pointerEvents=''; }
+  if(r&&r.error){ err.textContent=r.error.message||'Could not send the reset email.'; err.style.display='block'; return; }
+  if(msg){ msg.textContent='If an account exists for '+email+', a password-reset link is on its way — check your inbox.'; msg.style.display='block'; }
 }
 async function ssoLogin(provider){
   var err=document.getElementById('login-err'); err.style.display='none';
