@@ -161,6 +161,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     <button id="login-btn" type="submit" style="width:100%;background:#7cb83e;color:#13260b;font-weight:700;font-size:14px;border:none;border-radius:8px;padding:11px;cursor:pointer;">Sign in</button>
   </form>
 </div>
+<!-- ── Set-password screen (shown when arriving from an invite/reset link) ── -->
+<div id="setpw-view" style="display:none;position:fixed;inset:0;z-index:5000;align-items:center;justify-content:center;background:var(--bg);padding:20px;">
+  <form id="setpw-form" onsubmit="doSetPassword(event)" autocomplete="on" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:28px 26px;width:100%;max-width:360px;">
+    <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;line-height:1;"><span style="color:var(--text2);">Drive</span><span style="color:#7cb83e;">IQ</span></div>
+    <div style="border-top:2px solid #7cb83e;margin-top:5px;padding-top:5px;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:18px;">Intelligent Driving Analytics</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Welcome! Set a password to finish setting up your account.</div>
+    <label for="setpw-pw" style="display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;">New password</label>
+    <input id="setpw-pw" type="password" autocomplete="new-password" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:9px 11px;outline:none;margin-bottom:14px;">
+    <label for="setpw-pw2" style="display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;">Confirm password</label>
+    <input id="setpw-pw2" type="password" autocomplete="new-password" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:9px 11px;outline:none;margin-bottom:16px;">
+    <div id="setpw-err" style="display:none;font-size:12px;color:var(--danger);margin-bottom:12px;line-height:1.4;"></div>
+    <button id="setpw-btn" type="submit" style="width:100%;background:#7cb83e;color:#13260b;font-weight:700;font-size:14px;border:none;border-radius:8px;padding:11px;cursor:pointer;">Set password &amp; continue</button>
+  </form>
+</div>
 <div class="page" id="app-root" style="display:none;">
   <!-- ── Header ── -->
   <div class="header">
@@ -174,7 +188,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <button class="tab active" id="tab-dash" onclick="switchTab('dash')"><i class="ti ti-layout-dashboard" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Dashboard</button>
       <button class="tab" id="tab-lb" onclick="switchTab('lb')"><i class="ti ti-trophy" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--gold);"></i>Weekly Leaderboard</button>
       <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
-      <button class="tab" id="tab-drivers" onclick="switchTab('drivers')"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
+      <button class="tab" id="tab-drivers" onclick="switchTab('drivers')" style="display:none;"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
+      <button class="tab" id="tab-admin" onclick="switchTab('admin')" style="display:none;"><i class="ti ti-shield-lock" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Admin</button>
     </div>
     <div style="flex:1;display:flex;justify-content:flex-end;align-items:center;gap:20px;">
       <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Scored trips</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-trips">—</div></div>
@@ -338,12 +353,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <p style="font-size:12.5px;color:var(--text3);line-height:1.6;margin:16px 2px 24px;text-align:center;">Every vehicle is measured by exactly the same rules, on its own real driving data — and that's what makes the comparison fair.</p>
     </div>
   </div>
+
+  <!-- ══════════════════════════════════════════
+       ADMIN VIEW (admin-only)
+  ══════════════════════════════════════════ -->
+  <div id="view-admin" style="display:none;">
+    <div class="slabel" style="margin-top:4px;">Admin &mdash; user management</div>
+    <div class="stat" style="margin-bottom:16px;max-width:560px;">
+      <div class="lbl" style="margin-bottom:9px;">Invite a user</div>
+      <form id="invite-form" onsubmit="sendInvite(event)" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input id="inv-email" type="email" placeholder="name@company.com" style="flex:1;min-width:200px;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:9px 11px;outline:none;">
+        <button id="inv-btn" type="submit" style="background:#7cb83e;color:#13260b;font-weight:700;font-size:13px;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;white-space:nowrap;">Send invite</button>
+      </form>
+      <div id="inv-msg" style="font-size:12px;margin-top:9px;display:none;"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:9px;line-height:1.5;">Invited users get an email to set a password and join as a regular (non-admin) user.</div>
+    </div>
+    <div class="slabel">Users</div>
+    <div id="admin-users" style="max-width:560px;"></div>
+  </div>
 </div>
 
 <script>
 // driver helpers — hoisted so available on first render
 // Supabase client — driver profiles stored in cloud DB
-const _sb=supabase.createClient('https://qijfexvpkaieoyuydcrx.supabase.co','sb_publishable_dDsaQzecFo3DguYKwSDWLQ_F6w8h3Ra');
+const SUPA_URL='https://qijfexvpkaieoyuydcrx.supabase.co', SUPA_KEY='sb_publishable_dDsaQzecFo3DguYKwSDWLQ_F6w8h3Ra';
+const _sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+var _hashType=(function(){var m=/[#&]type=([a-z_]+)/.exec(location.hash||'');return m?m[1]:'';})();
+var currentUser=null, currentRole='user';
 let _drCache={};
 function loadDrivers(){ return _drCache; }
 function saveDrivers(data){ _drCache=data; }
@@ -375,13 +411,16 @@ function switchTab(tab){
   document.getElementById('view-lb').style.display      = tab==='lb'?'':'none';
   document.getElementById('view-drivers').style.display = tab==='drivers'?'':'none';
   document.getElementById('view-faq').style.display     = tab==='faq'?'':'none';
+  document.getElementById('view-admin').style.display   = tab==='admin'?'':'none';
   document.getElementById('tab-dash').classList.toggle('active',    tab==='dash');
   document.getElementById('tab-lb').classList.toggle('active',      tab==='lb');
   document.getElementById('tab-drivers').classList.toggle('active', tab==='drivers');
   document.getElementById('tab-faq').classList.toggle('active',     tab==='faq');
+  document.getElementById('tab-admin').classList.toggle('active',   tab==='admin');
   if(tab==='lb') renderLeaderboard();
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
+  if(tab==='admin') loadAdminUsers();
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -781,13 +820,21 @@ function startApp(){
   setInterval(function(){ loadDashboardData().then(function(){ renderRanking(); }); }, 5*60*1000);
 }
 function showLogin(){
+  document.getElementById('setpw-view').style.display='none';
   document.getElementById('app-root').style.display='none';
   document.getElementById('login-view').style.display='flex';
 }
 function showApp(){
   document.getElementById('login-view').style.display='none';
+  document.getElementById('setpw-view').style.display='none';
   document.getElementById('app-root').style.display='block';
   startApp();
+  loadRole();
+}
+function showSetPassword(){
+  document.getElementById('login-view').style.display='none';
+  document.getElementById('app-root').style.display='none';
+  document.getElementById('setpw-view').style.display='flex';
 }
 async function doLogin(ev){
   if(ev) ev.preventDefault();
@@ -802,11 +849,94 @@ async function doLogin(ev){
   if(res.error){ err.textContent=res.error.message||'Sign-in failed.'; err.style.display='block'; return; }
   showApp();
 }
+async function doSetPassword(ev){
+  if(ev) ev.preventDefault();
+  var err=document.getElementById('setpw-err'); err.style.display='none';
+  var pw=document.getElementById('setpw-pw').value||'', pw2=document.getElementById('setpw-pw2').value||'';
+  if(pw.length<8){ err.textContent='Password must be at least 8 characters.'; err.style.display='block'; return; }
+  if(pw!==pw2){ err.textContent='Passwords do not match.'; err.style.display='block'; return; }
+  var btn=document.getElementById('setpw-btn'); btn.disabled=true; btn.textContent='Saving…';
+  var res=await _sb.auth.updateUser({password:pw});
+  btn.disabled=false; btn.textContent='Set password & continue';
+  if(res.error){ err.textContent=res.error.message||'Could not set password.'; err.style.display='block'; return; }
+  _hashType=''; try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+  showApp();
+}
 async function doLogout(){ try{ await _sb.auth.signOut(); }catch(e){} location.reload(); }
+
+// ── Roles ────────────────────────────────────────────────────────────────
+async function loadRole(){
+  try{
+    var u=await _sb.auth.getUser(); currentUser=(u&&u.data&&u.data.user)||null;
+    if(currentUser){
+      var r=await _sb.from('profiles').select('role').eq('id',currentUser.id).maybeSingle();
+      currentRole=(r&&r.data&&r.data.role)||'user';
+    }
+  }catch(e){ currentRole='user'; }
+  applyRoleUI();
+}
+function applyRoleUI(){
+  var isAdmin=currentRole==='admin';
+  var at=document.getElementById('tab-admin'); if(at) at.style.display=isAdmin?'':'none';
+  var dt=document.getElementById('tab-drivers'); if(dt) dt.style.display=isAdmin?'':'none';
+  if(!isAdmin){
+    var va=document.getElementById('view-admin'), vd=document.getElementById('view-drivers');
+    if((va&&va.style.display!=='none')||(vd&&vd.style.display!=='none')) switchTab('dash');
+  }
+}
+
+// ── Admin section ──────────────────────────────────────────────────────────
+async function loadAdminUsers(){
+  var el=document.getElementById('admin-users'); if(!el) return;
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var r=await _sb.from('profiles').select('id,email,role,created_at').order('created_at');
+  if(r.error){ el.innerHTML='<div class="empty">Could not load users: '+esc(r.error.message)+'</div>'; return; }
+  var rows=(r.data||[]).map(function(u){
+    var isMe=currentUser&&u.id===currentUser.id, isAdmin=u.role==='admin';
+    var badge='<span class="tag" style="background:'+(isAdmin?'var(--info-bg)':'var(--bg3)')+';color:'+(isAdmin?'var(--info)':'var(--text2)')+';">'+esc(u.role)+'</span>';
+    var act=isMe?'<span style="font-size:11px;color:var(--text3);min-width:84px;text-align:right;">you</span>'
+      :'<button onclick="setUserRole(\''+u.id+'\',\''+(isAdmin?'user':'admin')+'\')" style="font-size:11px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 9px;cursor:pointer;min-width:84px;">Make '+(isAdmin?'user':'admin')+'</button>';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:0.5px solid var(--border);">'
+      +'<span style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;">'+esc(u.email||'(no email)')+'</span>'
+      +badge+act+'</div>';
+  }).join('');
+  el.innerHTML=rows||'<div class="empty">No users yet.</div>';
+}
+async function setUserRole(id,role){
+  var r=await _sb.from('profiles').update({role:role}).eq('id',id);
+  if(r.error){ alert('Could not update role: '+r.error.message); return; }
+  loadAdminUsers();
+}
+async function sendInvite(ev){
+  if(ev) ev.preventDefault();
+  var email=(document.getElementById('inv-email').value||'').trim();
+  var msg=document.getElementById('inv-msg'), btn=document.getElementById('inv-btn');
+  msg.style.display='none';
+  if(!email){ msg.textContent='Enter an email address.'; msg.style.color='var(--danger)'; msg.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='Sending…';
+  try{
+    var sess=await _sb.auth.getSession();
+    var token=sess&&sess.data&&sess.data.session&&sess.data.session.access_token;
+    var res=await fetch(SUPA_URL+'/functions/v1/invite-user',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPA_KEY},
+      body:JSON.stringify({email:email})
+    });
+    var out={}; try{ out=await res.json(); }catch(e){}
+    if(!res.ok) throw new Error(out.error||('Invite failed ('+res.status+')'));
+    msg.textContent='Invite sent to '+email+'.'; msg.style.color='var(--success)'; msg.style.display='block';
+    document.getElementById('inv-email').value=''; loadAdminUsers();
+  }catch(e){ msg.textContent=e.message||'Invite failed.'; msg.style.color='var(--danger)'; msg.style.display='block'; }
+  btn.disabled=false; btn.textContent='Send invite';
+}
+
 _sb.auth.getSession().then(function(res){
-  if(res && res.data && res.data.session) showApp(); else showLogin();
+  var sess=res&&res.data&&res.data.session;
+  if(_hashType==='invite'||_hashType==='recovery'){ showSetPassword(); return; }
+  if(sess) showApp(); else showLogin();
 });
 _sb.auth.onAuthStateChange(function(event,session){
+  if((_hashType==='invite'||_hashType==='recovery') && session){ showSetPassword(); return; }
   if(event==='SIGNED_OUT' || !session) showLogin();
 });
 
