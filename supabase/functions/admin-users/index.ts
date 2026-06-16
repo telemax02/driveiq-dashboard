@@ -61,6 +61,16 @@ Deno.serve(async (req: Request) => {
         last_sign_in_at: u.last_sign_in_at ?? null,
       }));
       users.sort((a, b) => (a.email > b.email ? 1 : -1));
+      // Best-effort: attach the most recent login IP from the auth audit logs
+      // (needs the admin_user_logins() SQL function; harmless if it isn't there).
+      try {
+        const { data: logins } = await admin.rpc("admin_user_logins");
+        const ipBy: Record<string, string> = {};
+        for (const r of (logins ?? []) as Array<{ user_id: string; ip: string }>) {
+          if (r.user_id) ipBy[r.user_id] = r.ip || "";
+        }
+        for (const u of users) (u as Record<string, unknown>).ip = ipBy[u.id] || "";
+      } catch (_) { /* function not created yet */ }
       return json({ users });
     }
 
@@ -179,6 +189,20 @@ Deno.serve(async (req: Request) => {
         if (error) return json({ error: error.message }, 400);
       }
       return json({ ok: true });
+    }
+
+    if (action === "geoip") {
+      const ip = String(body.ip || "").trim();
+      if (!ip) return json({ city: "", region: "", country: "" });
+      try {
+        const r = await fetch("https://ipapi.co/" + encodeURIComponent(ip) + "/json/", {
+          headers: { "User-Agent": "DriveIQ-admin" },
+        });
+        const j = await r.json();
+        return json({ city: j.city || "", region: j.region || "", country: j.country_name || j.country || "" });
+      } catch (_) {
+        return json({ city: "", region: "", country: "" });
+      }
     }
 
     return json({ error: "Unknown action" }, 400);

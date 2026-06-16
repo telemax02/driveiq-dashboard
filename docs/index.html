@@ -172,6 +172,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .au-btn:hover{border-color:var(--info);color:var(--text);}
 .au-btn.save{background:#7cb83e;color:#13260b;font-weight:700;border:none;}
 .au-btn.del{background:var(--danger-bg);border-color:var(--danger);color:var(--danger);}
+.au-item{margin-bottom:5px;}
+.au-item .au-row{margin-bottom:0;}
+.au-login:hover{color:var(--info);}
+.au-detail{font-size:11.5px;color:var(--text2);background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:7px 12px;margin-top:3px;min-width:840px;}
 /* Invite form fields */
 .inv-l{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .inv-i{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;-webkit-appearance:none;}
@@ -1091,22 +1095,42 @@ function renderAdminUsers(users){
       +'</div>';
     }
     var roleBadge='<span class="tag" style="background:'+(u.role==='admin'?'var(--info-bg)':'var(--bg3)')+';color:'+(u.role==='admin'?'var(--info)':'var(--text2)')+';text-transform:capitalize;">'+(u.role||'user')+'</span>';
-    return '<div class="au-row">'
-      +'<div class="au-cell" title="'+esc(u.email)+'">'+esc(u.email)+'</div>'
-      +'<div class="au-cell">'+(nm.first?esc(nm.first):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
-      +'<div class="au-cell">'+(nm.last?esc(nm.last):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
-      +'<div>'+roleBadge+'</div>'
-      +statusCell
-      +loginCell
-      +'<div class="au-actions">'
-        +'<button class="au-btn" onclick="editUser(\''+u.id+'\')"><i class="ti ti-pencil" style="font-size:12px;vertical-align:-1px;"></i> Edit</button>'
-        +(pending
-            ?'<button class="au-btn" title="Resend invite email" onclick="resendInvite(\''+u.id+'\')">Resend</button>'
-            :'<button class="au-btn" title="Send password-reset email" onclick="resetPassword(\''+u.id+'\')">Reset</button>')
-        +(isMe?'':'<button class="au-btn del" title="Remove user" onclick="removeUser(\''+u.id+'\')"><i class="ti ti-trash" style="font-size:12px;"></i></button>')
+    var loginCellRO='<div class="au-cell au-login" onclick="toggleDetail(\''+u.id+'\')" title="Click for last IP &amp; approx location" style="cursor:pointer;font-size:11px;color:var(--text2);">'+_fmtLogin(u.last_sign_in_at)+' <span style="color:var(--text3);font-size:9px;">&#9662;</span></div>';
+    return '<div class="au-item">'
+      +'<div class="au-row">'
+        +'<div class="au-cell" title="'+esc(u.email)+'">'+esc(u.email)+'</div>'
+        +'<div class="au-cell">'+(nm.first?esc(nm.first):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
+        +'<div class="au-cell">'+(nm.last?esc(nm.last):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
+        +'<div>'+roleBadge+'</div>'
+        +statusCell
+        +loginCellRO
+        +'<div class="au-actions">'
+          +'<button class="au-btn" onclick="editUser(\''+u.id+'\')"><i class="ti ti-pencil" style="font-size:12px;vertical-align:-1px;"></i> Edit</button>'
+          +(pending
+              ?'<button class="au-btn" title="Resend invite email" onclick="resendInvite(\''+u.id+'\')">Resend</button>'
+              :'<button class="au-btn" title="Send password-reset email" onclick="resetPassword(\''+u.id+'\')">Reset</button>')
+          +(isMe?'':'<button class="au-btn del" title="Remove user" onclick="removeUser(\''+u.id+'\')"><i class="ti ti-trash" style="font-size:12px;"></i></button>')
+        +'</div>'
+      +'</div>'
+      +'<div class="au-detail" id="au-detail-'+u.id+'" style="display:none;">'
+        +'Last login IP: <b id="au-ip-'+u.id+'">&hellip;</b><span style="color:var(--text3);"> &middot; </span>Approx location: <span id="au-geo-'+u.id+'">&hellip;</span>'
       +'</div>'
     +'</div>';
   }).join('');
+}
+async function toggleDetail(id){
+  var d=document.getElementById('au-detail-'+id); if(!d) return;
+  if(d.style.display!=='none'){ d.style.display='none'; return; }
+  d.style.display='';
+  if(d._loaded) return; d._loaded=true;
+  var u=(_adminUsersCache||[]).find(function(x){return x.id===id;})||{};
+  var ip=(u.ip||'').trim();
+  var ipEl=document.getElementById('au-ip-'+id), geoEl=document.getElementById('au-geo-'+id);
+  if(ipEl) ipEl.textContent=ip||'not recorded';
+  if(!ip){ if(geoEl) geoEl.textContent='—'; return; }
+  if(geoEl) geoEl.textContent='locating…';
+  try{ var g=await _adminCall({action:'geoip',ip:ip}); var loc=[g.city,g.country].filter(Boolean).join(', '); if(geoEl) geoEl.textContent=loc||'unknown'; }
+  catch(e){ if(geoEl) geoEl.textContent='unavailable'; }
 }
 function _uEmail(id){
   var e=document.getElementById('u-email-'+id);
