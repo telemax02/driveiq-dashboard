@@ -158,19 +158,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .dr-row select option{background:var(--bg2);color:var(--text);}
 .dr-row .sc{font-size:15px;font-weight:500;text-align:right;white-space:nowrap;}
 /* ── Admin users table ── */
-.au-head,.au-row{display:grid;grid-template-columns:minmax(170px,1.6fr) minmax(120px,1.1fr) 88px 92px 156px;gap:8px;align-items:center;min-width:680px;}
+.au-head,.au-row{display:grid;grid-template-columns:minmax(160px,1.6fr) minmax(110px,1.1fr) 80px 88px 188px;gap:8px;align-items:center;min-width:700px;}
 .au-head{padding:2px 12px;}
 .au-head span{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;}
 .au-row{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:7px 12px;margin-bottom:5px;}
 .au-row input,.au-row select{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 8px;outline:none;-webkit-appearance:none;}
 .au-row input:focus,.au-row select:focus{border-color:var(--info);}
 .au-row select option{background:var(--bg2);color:var(--text);}
+.au-row .au-cell{font-size:12.5px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .au-status{display:flex;align-items:center;gap:6px;min-width:0;}
 .au-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
 .au-btn{font-size:11px;border-radius:6px;padding:5px 8px;cursor:pointer;border:0.5px solid var(--border);background:var(--bg3);color:var(--text2);white-space:nowrap;line-height:1;}
 .au-btn:hover{border-color:var(--info);color:var(--text);}
 .au-btn.save{background:#7cb83e;color:#13260b;font-weight:700;border:none;}
-.au-btn.del{background:var(--danger-bg);border-color:var(--danger);color:var(--danger);margin-left:auto;}
+.au-btn.del{background:var(--danger-bg);border-color:var(--danger);color:var(--danger);}
+/* Invite form fields */
+.inv-l{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.inv-i{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;-webkit-appearance:none;}
+.inv-i:focus{border-color:var(--info);}
 </style>
 </head>
 <body>
@@ -389,9 +394,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     <div class="slabel" style="margin-top:4px;">Admin &mdash; user management</div>
     <div class="stat" style="margin-bottom:16px;max-width:560px;">
       <div class="lbl" style="margin-bottom:9px;">Invite a user</div>
-      <form id="invite-form" onsubmit="sendInvite(event)" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <input id="inv-email" type="email" placeholder="name@company.com" style="flex:1;min-width:200px;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:9px 11px;outline:none;">
-        <button id="inv-btn" type="submit" style="background:#7cb83e;color:#13260b;font-weight:700;font-size:13px;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;white-space:nowrap;">Send invite</button>
+      <form id="invite-form" onsubmit="sendInvite(event)" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:2;min-width:190px;"><label class="inv-l" for="inv-email">Email</label><input id="inv-email" type="email" placeholder="name@company.com" class="inv-i"></div>
+        <div style="flex:1;min-width:104px;"><label class="inv-l" for="inv-first">First name</label><input id="inv-first" type="text" placeholder="First" class="inv-i"></div>
+        <div style="flex:1;min-width:104px;"><label class="inv-l" for="inv-last">Last name</label><input id="inv-last" type="text" placeholder="Last" class="inv-i"></div>
+        <div style="min-width:92px;"><label class="inv-l" for="inv-role">Role</label><select id="inv-role" class="inv-i"><option value="user">user</option><option value="admin">admin</option></select></div>
+        <button id="inv-btn" type="submit" style="background:#7cb83e;color:#13260b;font-weight:700;font-size:13px;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;white-space:nowrap;">Send invite</button>
       </form>
       <div id="inv-msg" style="font-size:12px;margin-top:9px;display:none;"></div>
       <div style="font-size:11px;color:var(--text3);margin-top:9px;line-height:1.5;">Invited users get an email to set a password and join as a regular (non-admin) user.</div>
@@ -1024,7 +1032,7 @@ function _adminMsg(text,color){
   var m=document.getElementById('inv-msg'); if(!m) return;
   m.textContent=text; m.style.color=color||'var(--text2)'; m.style.display='block';
 }
-var _adminUsersCache=null;
+var _adminUsersCache=null, _editUserId=null;
 async function loadAdminUsers(){
   var el=document.getElementById('admin-users'); if(!el) return;
   // Cache: render the last-known list instantly, then refresh in the background
@@ -1050,16 +1058,30 @@ function renderAdminUsers(users){
   el.innerHTML=head+users.map(function(u){
     var isMe=currentUser&&u.id===currentUser.id, pending=!u.confirmed;
     var status='<span class="tag" style="background:'+(pending?'var(--warning-bg)':'var(--success-bg)')+';color:'+(pending?'var(--warning)':'var(--success)')+';">'+(pending?'pending':'active')+'</span>';
+    var statusCell='<div class="au-status">'+status+(isMe?'<span style="font-size:10px;color:var(--text3);">you</span>':'')+'</div>';
+    if(u.id===_editUserId){
+      return '<div class="au-row">'
+        +'<input id="u-email-'+u.id+'" type="email" value="'+esc(u.email)+'">'
+        +'<input id="u-name-'+u.id+'" type="text" placeholder="Display name" value="'+esc(u.name||'')+'">'
+        +'<select id="u-role-'+u.id+'" '+(isMe?'disabled style="opacity:.6;"':'')+'>'
+          +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
+          +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
+        +'</select>'
+        +statusCell
+        +'<div class="au-actions">'
+          +'<button class="au-btn save" onclick="saveUser(\''+u.id+'\')">Save</button>'
+          +'<button class="au-btn" onclick="cancelEditUser()">Cancel</button>'
+        +'</div>'
+      +'</div>';
+    }
+    var roleBadge='<span class="tag" style="background:'+(u.role==='admin'?'var(--info-bg)':'var(--bg3)')+';color:'+(u.role==='admin'?'var(--info)':'var(--text2)')+';text-transform:capitalize;">'+(u.role||'user')+'</span>';
     return '<div class="au-row">'
-      +'<input id="u-email-'+u.id+'" type="email" value="'+esc(u.email)+'">'
-      +'<input id="u-name-'+u.id+'" type="text" placeholder="Display name" value="'+esc(u.name||'')+'">'
-      +'<select id="u-role-'+u.id+'" '+(isMe?'disabled style="opacity:.6;"':'')+'>'
-        +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
-        +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
-      +'</select>'
-      +'<div class="au-status">'+status+(isMe?'<span style="font-size:10px;color:var(--text3);">you</span>':'')+'</div>'
+      +'<div class="au-cell" title="'+esc(u.email)+'">'+esc(u.email)+'</div>'
+      +'<div class="au-cell">'+(u.name?esc(u.name):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
+      +'<div>'+roleBadge+'</div>'
+      +statusCell
       +'<div class="au-actions">'
-        +'<button class="au-btn save" onclick="saveUser(\''+u.id+'\')">Save</button>'
+        +'<button class="au-btn" onclick="editUser(\''+u.id+'\')"><i class="ti ti-pencil" style="font-size:12px;vertical-align:-1px;"></i> Edit</button>'
         +(pending
             ?'<button class="au-btn" title="Resend invite email" onclick="resendInvite(\''+u.id+'\')">Resend</button>'
             :'<button class="au-btn" title="Send password-reset email" onclick="resetPassword(\''+u.id+'\')">Reset</button>')
@@ -1068,12 +1090,20 @@ function renderAdminUsers(users){
     +'</div>';
   }).join('');
 }
-function _uEmail(id){ var e=document.getElementById('u-email-'+id); return e?(e.value||'').trim():''; }
+function _uEmail(id){
+  var e=document.getElementById('u-email-'+id);
+  if(e) return (e.value||'').trim();
+  var u=(_adminUsersCache||[]).find(function(x){return x.id===id;});
+  return u?(u.email||''):'';
+}
+function editUser(id){ _editUserId=id; if(_adminUsersCache) renderAdminUsers(_adminUsersCache); }
+function cancelEditUser(){ _editUserId=null; if(_adminUsersCache) renderAdminUsers(_adminUsersCache); }
 async function saveUser(id){
   var roleEl=document.getElementById('u-role-'+id);
-  var payload={action:'update',id:id,email:_uEmail(id),name:(document.getElementById('u-name-'+id).value||'').trim()};
+  var nameEl=document.getElementById('u-name-'+id);
+  var payload={action:'update',id:id,email:_uEmail(id),name:(nameEl?nameEl.value:'').trim()};
   if(roleEl && !roleEl.disabled) payload.role=roleEl.value;
-  try{ await _adminCall(payload); _adminMsg('Saved.','var(--success)'); loadAdminUsers(); }
+  try{ await _adminCall(payload); _editUserId=null; _adminMsg('Saved.','var(--success)'); loadAdminUsers(); }
   catch(e){ _adminMsg(e.message,'var(--danger)'); }
 }
 async function removeUser(id){
@@ -1096,13 +1126,21 @@ async function resetPassword(id){
 async function sendInvite(ev){
   if(ev) ev.preventDefault();
   var email=(document.getElementById('inv-email').value||'').trim();
+  var first=(document.getElementById('inv-first').value||'').trim();
+  var last=(document.getElementById('inv-last').value||'').trim();
+  var role=(document.getElementById('inv-role').value||'user');
+  var name=(first+' '+last).trim();
   var btn=document.getElementById('inv-btn');
   if(!email){ _adminMsg('Enter an email address.','var(--danger)'); return; }
   btn.disabled=true; btn.textContent='Sending…';
   try{
-    await _adminCall({action:'invite',email:email});
-    _adminMsg('Invite sent to '+email+'.','var(--success)');
-    document.getElementById('inv-email').value=''; loadAdminUsers();
+    await _adminCall({action:'invite',email:email,name:name,role:role});
+    _adminMsg('Invite sent to '+email+(role==='admin'?' as an admin':'')+'.','var(--success)');
+    document.getElementById('inv-email').value='';
+    document.getElementById('inv-first').value='';
+    document.getElementById('inv-last').value='';
+    document.getElementById('inv-role').value='user';
+    _adminUsersCache=null; loadAdminUsers();
   }catch(e){ _adminMsg(e.message||'Invite failed.','var(--danger)'); }
   btn.disabled=false; btn.textContent='Send invite';
 }

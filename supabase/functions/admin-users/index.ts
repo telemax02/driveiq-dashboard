@@ -67,12 +67,17 @@ Deno.serve(async (req: Request) => {
     if (action === "invite" || action === "resend") {
       const email = String(body.email || "").trim();
       if (!EMAIL_RE.test(email)) return json({ error: "A valid email is required" }, 400);
+      const name = body.name != null ? String(body.name).trim() : "";
+      const role = body.role === "admin" ? "admin" : "user";
       // Authorize this email (allowlist) regardless of whether the email delivers.
       await admin.from("allowed_emails").upsert({ email: email.toLowerCase() }, { onConflict: "email" });
+      const opts: Record<string, unknown> = {};
       const redirectTo = Deno.env.get("INVITE_REDIRECT_TO") || undefined;
+      if (redirectTo) opts.redirectTo = redirectTo;
+      if (name) opts.data = { name }; // -> user_metadata.name (the display name)
       const { data, error } = await admin.auth.admin.inviteUserByEmail(
         email,
-        redirectTo ? { redirectTo } : undefined,
+        Object.keys(opts).length ? opts : undefined,
       );
       if (error) {
         // On "resend", a user who already accepted shows up as already-registered.
@@ -81,6 +86,13 @@ Deno.serve(async (req: Request) => {
           return json({ ok: true, email });
         }
         return json({ error: error.message }, 400);
+      }
+      // Apply the chosen role on a fresh invite (the handle_new_user trigger
+      // creates the profile as 'user'; this upsert overrides it). Resend never
+      // changes the role.
+      const newId = data?.user?.id;
+      if (action === "invite" && newId) {
+        await admin.from("profiles").upsert({ id: newId, email, role }, { onConflict: "id" });
       }
       return json({ ok: true, email: data?.user?.email ?? email });
     }
