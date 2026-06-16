@@ -142,22 +142,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .trend-cell{text-align:center;font-size:15px;}
 @media(max-width:700px){.main{grid-template-columns:1fr;}.stats{grid-template-columns:1fr;}.lb-list-header,.lb-row{grid-template-columns:30px 1fr 52px 40px 40px 28px;}.hide-m{display:none;}}
 /* ── Drivers ── */
-.dr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
-.dr-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow);}
-.dr-card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-.dr-avatar{width:40px;height:40px;border-radius:50%;background:var(--bg3);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;font-weight:600;color:var(--text2);}
-.dr-plate{font-size:14px;font-weight:600;}
-.dr-make{font-size:11px;color:var(--text3);}
-.dr-score{font-size:20px;font-weight:500;}
-.dr-fields{display:flex;flex-direction:column;gap:8px;}
-.dr-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.dr-field label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
-.dr-field input,.dr-field select{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:7px 10px;outline:none;transition:border-color .15s;-webkit-appearance:none;}
-.dr-field input:focus,.dr-field select:focus{border-color:var(--info);}
-.dr-field select option{background:var(--bg2);color:var(--text);}
-.dr-saved{font-size:10px;color:var(--success);opacity:0;transition:opacity .4s;margin-top:6px;height:14px;}
-.dr-saved.show{opacity:1;}
-.dr-name-tag{font-size:11px;color:var(--text2);margin-top:1px;}
+.dr-grid{display:flex;flex-direction:column;gap:5px;overflow-x:auto;padding-bottom:4px;}
+.dr-head,.dr-row{display:grid;grid-template-columns:150px minmax(110px,1.3fr) 60px 116px 116px minmax(150px,1.6fr) 56px;gap:8px;align-items:center;min-width:760px;}
+.dr-head{padding:2px 12px;}
+.dr-head span{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;}
+.dr-head .r{text-align:right;}
+.dr-row{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:7px 12px;transition:background .5s,border-color .15s;}
+.dr-row:hover{border-color:var(--info);}
+.dr-row.saved-flash{background:var(--success-bg);border-color:var(--success);transition:background .12s,border-color .12s;}
+.dr-id{min-width:0;line-height:1.25;}
+.dr-id .p{font-size:13px;font-weight:600;color:var(--text);}
+.dr-id .m{font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dr-row input,.dr-row select{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 8px;outline:none;transition:border-color .15s;-webkit-appearance:none;}
+.dr-row input:focus,.dr-row select:focus{border-color:var(--info);}
+.dr-row select option{background:var(--bg2);color:var(--text);}
+.dr-row .sc{font-size:15px;font-weight:500;text-align:right;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -1211,38 +1210,28 @@ function renderDrivers(){
   var drData = loadDrivers();
   var AGES = ['Under 25','25–34','35–44','45–54','55–64','65+'];
   var SEXES = ['Male','Female','Non-binary','Prefer not to say'];
+  var head = document.createElement('div');
+  head.className = 'dr-head';
+  head.innerHTML = '<span>Vehicle</span><span>First name</span><span>Last init.</span><span>Age</span><span>Sex</span><span>Email</span><span class="r">Score</span>';
+  grid.appendChild(head);
   vehicles.forEach(function(v){
     var d = drData[v.plate] || {};
-    var initials = driverInitials(d);
-    var hasName = (d.first||'').trim() || (d.last||'').trim();
-    var card = document.createElement('div');
-    card.className = 'dr-card';
     var ageOpts = AGES.map(function(a){ return '<option value="'+a+'"'+(d.age===a?' selected':'')+'>'+a+'</option>'; }).join('');
     var sexOpts = SEXES.map(function(s){ return '<option value="'+s+'"'+(d.sex===s?' selected':'')+'>'+s+'</option>'; }).join('');
     var pid = v.plate.replace(/\s/g,'_');
-    card.innerHTML =
-      '<div class="dr-card-header">'
-        +'<div class="dr-avatar" id="av-'+pid+'">'+initials+'</div>'
-        +'<div style="flex:1;min-width:0;">'
-          +'<div class="dr-plate">'+v.plate+'</div>'
-          +'<div class="dr-make">'+v.make+'</div>'
-          +(hasName?'<div class="dr-name-tag">'+((d.first||'')+' '+(d.last||'')).trim()+'</div>':'')
-        +'</div>'
-        +'<div class="dr-score" style="color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</div>'
-      +'</div>'
-      +'<div class="dr-fields">'
-        +'<div class="dr-row">'
-          +'<div class="dr-field"><label>First name</label><input type="text" id="dr-first-'+pid+'" value="'+(d.first||'')+'" placeholder="First name"></div>'
-          +'<div class="dr-field"><label>Last initial</label><input type="text" id="dr-last-'+pid+'" value="'+(d.last||'')+'" placeholder="A" maxlength="1" style="text-transform:uppercase;"></div>'
-        +'</div>'
-        +'<div class="dr-row">'
-          +'<div class="dr-field"><label>Age bracket</label><select id="dr-age-'+pid+'"><option value="">&#8212; select &#8212;</option>'+ageOpts+'</select></div>'
-          +'<div class="dr-field"><label>Sex</label><select id="dr-sex-'+pid+'"><option value="">&#8212; select &#8212;</option>'+sexOpts+'</select></div>'
-        +'</div>'
-        +'<div class="dr-field"><label>Email</label><input type="email" id="dr-email-'+pid+'" value="'+(d.email||'')+'" placeholder="driver@example.com"></div>'
-        +'<div class="dr-saved" id="dr-saved-'+pid+'">&#10003; Saved</div>'
-      +'</div>';
-    grid.appendChild(card);
+    var row = document.createElement('div');
+    row.className = 'dr-row';
+    row.id = 'dr-row-'+pid;
+    row.dataset.plate = v.plate;
+    row.innerHTML =
+      '<div class="dr-id"><div class="p">'+v.plate+'</div><div class="m">'+v.make+'</div></div>'
+      +'<input type="text" id="dr-first-'+pid+'" value="'+(d.first||'')+'" placeholder="First name">'
+      +'<input type="text" id="dr-last-'+pid+'" value="'+(d.last||'')+'" placeholder="A" maxlength="1" style="text-transform:uppercase;text-align:center;">'
+      +'<select id="dr-age-'+pid+'"><option value="">&#8212;</option>'+ageOpts+'</select>'
+      +'<select id="dr-sex-'+pid+'"><option value="">&#8212;</option>'+sexOpts+'</select>'
+      +'<input type="email" id="dr-email-'+pid+'" value="'+(d.email||'')+'" placeholder="driver@example.com">'
+      +'<div class="sc" style="color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</div>';
+    grid.appendChild(row);
     var plateRef = v.plate;
     ['first','last','age','sex','email'].forEach(function(field){
       var el = document.getElementById('dr-'+field+'-'+pid);
@@ -1271,15 +1260,13 @@ function saveDr(plate){
   if(emailEl){ emailEl.style.borderColor=''; emailEl.title=''; }
   _drCache[plate]=entry;
   _sb.from('drivers').upsert({plate:plate,first_name:entry.first,last_initial:entry.last,age:entry.age,sex:entry.sex,email:entry.email}).then(function(){});
-  var av = document.getElementById('av-'+pid);
-  if(av) av.textContent = driverInitials(entry) || '?';
-  var saved = document.getElementById('dr-saved-'+pid);
-  if(saved){ saved.classList.add('show'); clearTimeout(saved._t); saved._t=setTimeout(function(){ saved.classList.remove('show'); },1800); }
+  var row = document.getElementById('dr-row-'+pid);
+  if(row){ row.classList.add('saved-flash'); clearTimeout(row._t); row._t=setTimeout(function(){ row.classList.remove('saved-flash'); },900); }
 }
 function filterDrivers(q){
   q = (q||'').trim().toUpperCase();
   var drData = loadDrivers();
-  var cards = document.querySelectorAll('#dr-grid .dr-card');
+  var cards = document.querySelectorAll('#dr-grid .dr-row');
   var active = document.querySelector('#dr-alpha .alpha-btn.alpha-active');
   if(active && q === active.dataset.l) { /* already set */ }
   // Sync alpha bar highlight
@@ -1293,9 +1280,9 @@ function filterDrivers(q){
   var inp = document.getElementById('dr-search');
   if(inp && inp.value.toUpperCase() !== q) inp.value = q;
   cards.forEach(function(card){
-    var plate = card.querySelector('.dr-plate');
+    var plate = card.dataset.plate;
     if(!plate) return;
-    var d = drData[plate.textContent] || {};
+    var d = drData[plate] || {};
     var initial = (d.last||'').trim().toUpperCase()[0] || '';
     card.style.display = (!q || initial === q) ? '' : 'none';
   });
