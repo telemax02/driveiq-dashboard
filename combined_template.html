@@ -886,47 +886,98 @@ function applyRoleUI(){
 }
 
 // ── Admin section ──────────────────────────────────────────────────────────
+async function _adminCall(payload){
+  var sess=await _sb.auth.getSession();
+  var token=sess&&sess.data&&sess.data.session&&sess.data.session.access_token;
+  var res=await fetch(SUPA_URL+'/functions/v1/admin-users',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPA_KEY},
+    body:JSON.stringify(payload)
+  });
+  var out={}; try{ out=await res.json(); }catch(e){}
+  if(!res.ok) throw new Error(out.error||('Request failed ('+res.status+')'));
+  return out;
+}
+function _adminMsg(text,color){
+  var m=document.getElementById('inv-msg'); if(!m) return;
+  m.textContent=text; m.style.color=color||'var(--text2)'; m.style.display='block';
+}
 async function loadAdminUsers(){
   var el=document.getElementById('admin-users'); if(!el) return;
   el.innerHTML='<div class="empty">Loading…</div>';
-  var r=await _sb.from('profiles').select('id,email,role,created_at').order('created_at');
-  if(r.error){ el.innerHTML='<div class="empty">Could not load users: '+esc(r.error.message)+'</div>'; return; }
-  var rows=(r.data||[]).map(function(u){
-    var isMe=currentUser&&u.id===currentUser.id, isAdmin=u.role==='admin';
-    var badge='<span class="tag" style="background:'+(isAdmin?'var(--info-bg)':'var(--bg3)')+';color:'+(isAdmin?'var(--info)':'var(--text2)')+';">'+esc(u.role)+'</span>';
-    var act=isMe?'<span style="font-size:11px;color:var(--text3);min-width:84px;text-align:right;">you</span>'
-      :'<button onclick="setUserRole(\''+u.id+'\',\''+(isAdmin?'user':'admin')+'\')" style="font-size:11px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 9px;cursor:pointer;min-width:84px;">Make '+(isAdmin?'user':'admin')+'</button>';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:0.5px solid var(--border);">'
-      +'<span style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;">'+esc(u.email||'(no email)')+'</span>'
-      +badge+act+'</div>';
-  }).join('');
-  el.innerHTML=rows||'<div class="empty">No users yet.</div>';
+  try{
+    var out=await _adminCall({action:'list'});
+    renderAdminUsers(out.users||[]);
+  }catch(e){
+    el.innerHTML='<div class="empty" style="text-align:left;line-height:1.6;">Could not load users: '+esc(e.message)
+      +'<br><span style="font-size:11px;color:var(--text3);">Make sure the <b>admin-users</b> Edge Function is deployed in Supabase.</span></div>';
+  }
 }
-async function setUserRole(id,role){
-  var r=await _sb.from('profiles').update({role:role}).eq('id',id);
-  if(r.error){ alert('Could not update role: '+r.error.message); return; }
-  loadAdminUsers();
+function renderAdminUsers(users){
+  var el=document.getElementById('admin-users');
+  if(!users.length){ el.innerHTML='<div class="empty">No users yet.</div>'; return; }
+  var inp='background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:7px 9px;outline:none;';
+  el.innerHTML=users.map(function(u){
+    var isMe=currentUser&&u.id===currentUser.id, pending=!u.confirmed;
+    var status='<span class="tag" style="background:'+(pending?'var(--warning-bg)':'var(--success-bg)')+';color:'+(pending?'var(--warning)':'var(--success)')+';">'+(pending?'pending':'active')+'</span>';
+    return '<div class="stat" style="margin-bottom:8px;display:flex;flex-direction:column;gap:8px;">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        +'<input id="u-email-'+u.id+'" type="email" value="'+esc(u.email)+'" style="flex:1;min-width:180px;'+inp+'">'
+        +status+(isMe?'<span style="font-size:11px;color:var(--text3);">you</span>':'')
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        +'<input id="u-name-'+u.id+'" type="text" placeholder="Display name" value="'+esc(u.name||'')+'" style="flex:1;min-width:140px;'+inp+'">'
+        +'<select id="u-role-'+u.id+'" '+(isMe?'disabled':'')+' style="'+inp+(isMe?'opacity:.6;':'')+'">'
+          +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
+          +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
+        +'</select>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        +'<button onclick="saveUser(\''+u.id+'\')" style="font-size:12px;background:#7cb83e;color:#13260b;font-weight:700;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;">Save</button>'
+        +(pending
+            ?'<button onclick="resendInvite(\''+u.id+'\')" style="font-size:12px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;cursor:pointer;">Resend invite</button>'
+            :'<button onclick="resetPassword(\''+u.id+'\')" style="font-size:12px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;cursor:pointer;">Reset password</button>')
+        +(isMe?'':'<button onclick="removeUser(\''+u.id+'\')" style="font-size:12px;background:var(--danger-bg);border:0.5px solid var(--danger);color:var(--danger);border-radius:6px;padding:6px 12px;cursor:pointer;margin-left:auto;">Remove</button>')
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+function _uEmail(id){ var e=document.getElementById('u-email-'+id); return e?(e.value||'').trim():''; }
+async function saveUser(id){
+  var roleEl=document.getElementById('u-role-'+id);
+  var payload={action:'update',id:id,email:_uEmail(id),name:(document.getElementById('u-name-'+id).value||'').trim()};
+  if(roleEl && !roleEl.disabled) payload.role=roleEl.value;
+  try{ await _adminCall(payload); _adminMsg('Saved.','var(--success)'); loadAdminUsers(); }
+  catch(e){ _adminMsg(e.message,'var(--danger)'); }
+}
+async function removeUser(id){
+  var email=_uEmail(id);
+  if(!confirm('Remove '+email+'? They will lose access immediately.')) return;
+  try{ await _adminCall({action:'remove',id:id}); _adminMsg('Removed '+email+'.','var(--success)'); loadAdminUsers(); }
+  catch(e){ _adminMsg(e.message,'var(--danger)'); }
+}
+async function resendInvite(id){
+  try{ await _adminCall({action:'resend',email:_uEmail(id)}); _adminMsg('Invite re-sent to '+_uEmail(id)+'.','var(--success)'); }
+  catch(e){ _adminMsg(e.message,'var(--danger)'); }
+}
+async function resetPassword(id){
+  var email=_uEmail(id);
+  try{ var r=await _sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+    if(r.error) throw new Error(r.error.message);
+    _adminMsg('Password-reset email sent to '+email+'.','var(--success)'); }
+  catch(e){ _adminMsg(e.message,'var(--danger)'); }
 }
 async function sendInvite(ev){
   if(ev) ev.preventDefault();
   var email=(document.getElementById('inv-email').value||'').trim();
-  var msg=document.getElementById('inv-msg'), btn=document.getElementById('inv-btn');
-  msg.style.display='none';
-  if(!email){ msg.textContent='Enter an email address.'; msg.style.color='var(--danger)'; msg.style.display='block'; return; }
+  var btn=document.getElementById('inv-btn');
+  if(!email){ _adminMsg('Enter an email address.','var(--danger)'); return; }
   btn.disabled=true; btn.textContent='Sending…';
   try{
-    var sess=await _sb.auth.getSession();
-    var token=sess&&sess.data&&sess.data.session&&sess.data.session.access_token;
-    var res=await fetch(SUPA_URL+'/functions/v1/invite-user',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPA_KEY},
-      body:JSON.stringify({email:email})
-    });
-    var out={}; try{ out=await res.json(); }catch(e){}
-    if(!res.ok) throw new Error(out.error||('Invite failed ('+res.status+')'));
-    msg.textContent='Invite sent to '+email+'.'; msg.style.color='var(--success)'; msg.style.display='block';
+    await _adminCall({action:'invite',email:email});
+    _adminMsg('Invite sent to '+email+'.','var(--success)');
     document.getElementById('inv-email').value=''; loadAdminUsers();
-  }catch(e){ msg.textContent=e.message||'Invite failed.'; msg.style.color='var(--danger)'; msg.style.display='block'; }
+  }catch(e){ _adminMsg(e.message||'Invite failed.','var(--danger)'); }
   btn.disabled=false; btn.textContent='Send invite';
 }
 
