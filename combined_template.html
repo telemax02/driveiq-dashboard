@@ -502,10 +502,24 @@ function selectV(plate){
     :v.trend==='declining'
     ?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--danger);background:var(--danger-bg);padding:2px 8px;border-radius:20px;margin-left:8px;"><i class="ti ti-trending-down" style="font-size:11px;"></i> Declining</span>'
     :'';
+  // Per-driver risk badge (same bands as the fleet breakdown)
+  var _rcm={Low:'var(--success)',Moderate:'var(--warning)',High:'var(--danger)'};
+  function _f1(x){return (+x).toFixed(1);}
+  var vRisk=(v.avg>=_riskBands.low)?'Low':((v.avg<_riskBands.high)?'High':'Moderate');
+  var vRcol=_rcm[vRisk];
+  var _vb={High:'&lt;'+_f1(_riskBands.high),Moderate:_f1(_riskBands.high)+'–'+_f1(_riskBands.low),Low:'&ge;'+_f1(_riskBands.low)};
+  var riskBlock='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">'
+    +'<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:'+vRcol+';border:1px solid '+vRcol+';border-radius:11px;padding:2px 9px;white-space:nowrap;"><i class="ti ti-shield-half-filled" style="font-size:12px;"></i>'+vRisk+' risk</span>'
+    +'<span style="font-size:10px;white-space:nowrap;color:'+vRcol+';font-weight:600;">'+vRisk+' '+_vb[vRisk]+'</span></div>';
   el.innerHTML='';
   sumEl.innerHTML='<div style="background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--info);">'
-    +'<div style="font-size:16px;font-weight:700;color:var(--text);line-height:1.15;">'+(drName||v.plate)+'</div>'
-    +'<div style="font-size:12px;color:var(--text2);margin-bottom:10px;">'+v.plate+' &middot; '+v.make+' &middot; '+v.trips.length+' trip'+(v.trips.length!==1?'s':'')+' scored</div>'
+    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">'
+      +'<div>'
+        +'<div style="font-size:16px;font-weight:700;color:var(--text);line-height:1.15;">'+(drName||v.plate)+'</div>'
+        +'<div style="font-size:12px;color:var(--text2);">'+v.plate+' &middot; '+v.make+' &middot; '+v.trips.length+' trip'+(v.trips.length!==1?'s':'')+' scored</div>'
+      +'</div>'
+      +riskBlock
+    +'</div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
       +(v.rank===1?'<span style="font-size:22px;">🥇</span>':v.rank===2?'<span style="font-size:22px;">🥈</span>':v.rank===3?'<span style="font-size:22px;">🥉</span>':'')
       +'<span style="font-size:11px;font-weight:500;color:var(--text2);">Fleet rank</span>'
@@ -742,6 +756,7 @@ const mapObserver=new IntersectionObserver(function(entries){
 // Fleet breakdown panel — fleet-wide component stars + risk badge + weekly AI summary.
 // Populated from latest_run.data.fleet_insight (cached/regenerated every Monday).
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+var _riskBands={low:90.0,high:70.0}; // risk thresholds; synced from fleet_insight, reused for per-driver risk
 function renderFleetInsight(fi){
   var el=document.getElementById('tier-breakdown');
   if(!el) return;
@@ -761,6 +776,7 @@ function renderFleetInsight(fi){
 
   // risk badge + score-band legend (so they can see how close they are to the next band)
   var lo=(fi.risk_low_min!=null?fi.risk_low_min:85), hi=(fi.risk_high_max!=null?fi.risk_high_max:70);
+  _riskBands={low:+lo,high:+hi}; // remember the live thresholds for the per-driver badge
   var badge=fi.risk?('<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;'
     +'letter-spacing:.5px;text-transform:uppercase;color:'+rcol+';border:1px solid '+rcol+';border-radius:11px;padding:2px 9px;">'
     +'<i class="ti ti-shield-half-filled" style="font-size:12px;"></i>'+esc(fi.risk)+' risk</span>'):'';
