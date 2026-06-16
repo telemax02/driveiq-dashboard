@@ -158,7 +158,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .dr-row select option{background:var(--bg2);color:var(--text);}
 .dr-row .sc{font-size:15px;font-weight:500;text-align:right;white-space:nowrap;}
 /* ── Admin users table ── */
-.au-head,.au-row{display:grid;grid-template-columns:minmax(160px,1.6fr) minmax(110px,1.1fr) 80px 88px 188px;gap:8px;align-items:center;min-width:700px;}
+.au-head,.au-row{display:grid;grid-template-columns:minmax(150px,1.4fr) minmax(78px,0.9fr) minmax(78px,0.9fr) 74px 80px 104px 174px;gap:8px;align-items:center;min-width:840px;}
 .au-head{padding:2px 12px;}
 .au-head span{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;}
 .au-row{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:7px 12px;margin-bottom:5px;}
@@ -1056,23 +1056,34 @@ async function loadAdminUsers(){
       +'<br><span style="font-size:11px;color:var(--text3);">Make sure the <b>admin-users</b> Edge Function is deployed in Supabase.</span></div>';
   }
 }
+function _fmtLogin(ts){
+  if(!ts) return '<span style="color:var(--text3);">Never</span>';
+  var d=new Date(ts); if(isNaN(d.getTime())) return '<span style="color:var(--text3);">&mdash;</span>';
+  var mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  var h=d.getHours(), m=d.getMinutes(), ap=h>=12?'pm':'am'; h=h%12||12;
+  return d.getDate()+' '+mon+' '+(''+d.getFullYear()).slice(2)+', '+h+':'+(m<10?'0':'')+m+ap;
+}
+function _splitName(nm){ var p=(nm||'').trim().split(/\s+/).filter(Boolean); var f=p.shift()||''; return {first:f, last:p.join(' ')}; }
 function renderAdminUsers(users){
   var el=document.getElementById('admin-users');
   if(!users.length){ el.innerHTML='<div class="empty">No users yet.</div>'; return; }
-  var head='<div class="au-head"><span>Email</span><span>Display name</span><span>Role</span><span>Status</span><span>Actions</span></div>';
+  var head='<div class="au-head"><span>Email</span><span>First name</span><span>Last name</span><span>Role</span><span>Status</span><span>Last login</span><span>Actions</span></div>';
   el.innerHTML=head+users.map(function(u){
-    var isMe=currentUser&&u.id===currentUser.id, pending=!u.confirmed;
+    var isMe=currentUser&&u.id===currentUser.id, pending=!u.confirmed, nm=_splitName(u.name);
     var status='<span class="tag" style="background:'+(pending?'var(--warning-bg)':'var(--success-bg)')+';color:'+(pending?'var(--warning)':'var(--success)')+';">'+(pending?'pending':'active')+'</span>';
     var statusCell='<div class="au-status">'+status+(isMe?'<span style="font-size:10px;color:var(--text3);">you</span>':'')+'</div>';
+    var loginCell='<div class="au-cell" style="font-size:11px;color:var(--text2);" title="'+esc(u.last_sign_in_at||'')+'">'+_fmtLogin(u.last_sign_in_at)+'</div>';
     if(u.id===_editUserId){
       return '<div class="au-row">'
         +'<input id="u-email-'+u.id+'" type="email" value="'+esc(u.email)+'">'
-        +'<input id="u-name-'+u.id+'" type="text" placeholder="Display name" value="'+esc(u.name||'')+'">'
+        +'<input id="u-first-'+u.id+'" type="text" placeholder="First" value="'+esc(nm.first)+'">'
+        +'<input id="u-last-'+u.id+'" type="text" placeholder="Last" value="'+esc(nm.last)+'">'
         +'<select id="u-role-'+u.id+'" '+(isMe?'disabled style="opacity:.6;"':'')+'>'
           +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
           +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
         +'</select>'
         +statusCell
+        +loginCell
         +'<div class="au-actions">'
           +'<button class="au-btn save" onclick="saveUser(\''+u.id+'\')">Save</button>'
           +'<button class="au-btn" onclick="cancelEditUser()">Cancel</button>'
@@ -1082,9 +1093,11 @@ function renderAdminUsers(users){
     var roleBadge='<span class="tag" style="background:'+(u.role==='admin'?'var(--info-bg)':'var(--bg3)')+';color:'+(u.role==='admin'?'var(--info)':'var(--text2)')+';text-transform:capitalize;">'+(u.role||'user')+'</span>';
     return '<div class="au-row">'
       +'<div class="au-cell" title="'+esc(u.email)+'">'+esc(u.email)+'</div>'
-      +'<div class="au-cell">'+(u.name?esc(u.name):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
+      +'<div class="au-cell">'+(nm.first?esc(nm.first):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
+      +'<div class="au-cell">'+(nm.last?esc(nm.last):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
       +'<div>'+roleBadge+'</div>'
       +statusCell
+      +loginCell
       +'<div class="au-actions">'
         +'<button class="au-btn" onclick="editUser(\''+u.id+'\')"><i class="ti ti-pencil" style="font-size:12px;vertical-align:-1px;"></i> Edit</button>'
         +(pending
@@ -1105,8 +1118,9 @@ function editUser(id){ _editUserId=id; if(_adminUsersCache) renderAdminUsers(_ad
 function cancelEditUser(){ _editUserId=null; if(_adminUsersCache) renderAdminUsers(_adminUsersCache); }
 async function saveUser(id){
   var roleEl=document.getElementById('u-role-'+id);
-  var nameEl=document.getElementById('u-name-'+id);
-  var payload={action:'update',id:id,email:_uEmail(id),name:(nameEl?nameEl.value:'').trim()};
+  var fEl=document.getElementById('u-first-'+id), lEl=document.getElementById('u-last-'+id);
+  var name=((fEl?fEl.value:'').trim()+' '+(lEl?lEl.value:'').trim()).trim();
+  var payload={action:'update',id:id,email:_uEmail(id),name:name};
   if(roleEl && !roleEl.disabled) payload.role=roleEl.value;
   try{ await _adminCall(payload); _editUserId=null; _adminMsg('Saved.','var(--success)'); loadAdminUsers(); }
   catch(e){ _adminMsg(e.message,'var(--danger)'); }
