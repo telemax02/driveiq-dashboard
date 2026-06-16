@@ -378,7 +378,7 @@ function renderRanking(){
   vehicles.forEach(function(v,i){
     const row=document.createElement('div');
     row.className='rank-row'+(sel===v.plate?' active':'');
-    const badge=i<3?'<span style="font-size:15px;">'+M[i]+'</span>':'<span style="font-size:11px;font-weight:500;color:var(--text3);">#'+(i+1)+'</span>';
+    const badge=i<3?'<span style="font-size:15px;">'+M[i]+'</span>':'<span style="font-size:12px;font-weight:600;color:var(--text2);">#'+(i+1)+'</span>';
     const ti=v.trend==='improving'
       ?'<i class="ti ti-trending-up" style="font-size:13px;color:var(--success);" title="Improving"></i>'
       :v.trend==='declining'
