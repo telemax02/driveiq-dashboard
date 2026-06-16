@@ -13,7 +13,6 @@ async function initDrivers(){
   _drCache={};
   if(data) data.forEach(function(r){ _drCache[r.plate]={first:r.first_name||'',last:r.last_initial||'',age:r.age||'',sex:r.sex||'',email:r.email||''}; });
 }
-function driverInitials(d){ var f=(d.first||'').trim(),l=(d.last||'').trim(); return (f||l)?(f[0]||'')+(l[0]||''):'?'; }
 const GOLD='#EF9F27';
 function sc(s){if(s>=90)return'var(--success)';if(s>=70)return'var(--info)';if(s>=50)return'var(--warning)';return'var(--danger)';}
 function fmt1(x){return (x==null||isNaN(x))?'—':(+x).toFixed(1);} // scores shown to 1 decimal
@@ -908,11 +907,6 @@ function celebrateWinner(){
 }
 
 // ── Drivers ────────────────────────────────────────────────────────────────
-function driverInitials(d){
-  var f=(d.first||'').trim(), l=(d.last||'').trim();
-  if(f||l) return (f[0]||'')+(l[0]||'');
-  return '?';
-}
 function renderDrivers(){
   var grid = document.getElementById('dr-grid');
   grid.innerHTML = '';
