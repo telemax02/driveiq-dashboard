@@ -1,27 +1,29 @@
 -- ===========================================================================
--- DriveIQ - last seen IP per user (for the Admin > Users panel).
--- Reads Supabase's auth audit logs and returns the most recent IP + time per
--- user (any auth event that carries an IP -- login, token refresh, etc.), since
--- fresh "login" events are sparse and pruned. SECURITY DEFINER so it can read
--- the auth schema; EXECUTE is locked to the service role (the admin-users Edge
--- Function calls it). Run in Supabase -> SQL Editor. Safe to re-run.
+-- DriveIQ - per-user login IP + approx location (Admin > Users panel).
+-- The auth audit log is empty on this project, so we record it ourselves:
+-- the admin-users Edge Function's "record_login" action (called by the app
+-- after sign-in) writes the caller's IP + city/country here. Admins read it.
+-- Run in Supabase -> SQL Editor. Safe to re-run.
 -- ===========================================================================
 
-create or replace function public.admin_user_logins()
-returns table(user_id uuid, ip text, last_login timestamptz)
-language sql
-security definer
-set search_path = public
-as $$
-  select distinct on ((e.payload->>'actor_id'))
-         (e.payload->>'actor_id')::uuid                                  as user_id,
-         coalesce(nullif(e.ip_address, ''), nullif(e.payload->>'ip_address','')) as ip,
-         e.created_at                                                    as last_login
-  from auth.audit_log_entries e
-  where (e.payload->>'actor_id') is not null
-    and coalesce(nullif(e.ip_address, ''), nullif(e.payload->>'ip_address','')) is not null
-  order by (e.payload->>'actor_id'), e.created_at desc;
-$$;
+create table if not exists public.user_logins (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  email      text,
+  ip         text,
+  city       text,
+  country    text,
+  last_login timestamptz
+);
 
-revoke execute on function public.admin_user_logins() from public, anon, authenticated;
-grant  execute on function public.admin_user_logins() to service_role;
+alter table public.user_logins enable row level security;
+
+-- Admins can read everyone's login info. Writes happen only via the Edge
+-- Function's service key (which bypasses RLS), so no write policy is needed.
+drop policy if exists user_logins_admin_read on public.user_logins;
+create policy user_logins_admin_read on public.user_logins
+  for select to authenticated
+  using (public.is_admin());
+
+-- Clean up the earlier (unused) audit-log approach.
+drop function if exists public.admin_user_logins();
+drop function if exists public.admin_audit_debug();

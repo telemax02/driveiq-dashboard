@@ -914,6 +914,12 @@ async function showApp(){
   document.getElementById('app-root').style.display='block';
   startApp();
   loadRole();
+  recordLogin();
+}
+var _loginRecorded=false;
+function recordLogin(){
+  if(_loginRecorded) return; _loginRecorded=true;
+  try{ _adminCall({action:'record_login'}).catch(function(){}); }catch(e){}
 }
 // Invited-only gate. Returns 'ok' (admin or allow-listed), 'denied' (signed in but
 // not invited), or 'error' (couldn't verify: RLS/network problem). Only the genuine
@@ -1126,8 +1132,9 @@ async function toggleDetail(id){
   var u=(_adminUsersCache||[]).find(function(x){return x.id===id;})||{};
   var ip=(u.ip||'').trim();
   var ipEl=document.getElementById('au-ip-'+id), geoEl=document.getElementById('au-geo-'+id);
-  if(ipEl) ipEl.textContent=ip||'not recorded';
+  if(ipEl) ipEl.textContent=ip||'not recorded yet';
   if(!ip){ if(geoEl) geoEl.textContent='—'; return; }
+  if(u.loc){ if(geoEl) geoEl.textContent=u.loc; return; }
   if(geoEl) geoEl.textContent='locating…';
   try{ var g=await _adminCall({action:'geoip',ip:ip}); var loc=[g.city,g.country].filter(Boolean).join(', '); if(geoEl) geoEl.textContent=loc||'unknown'; }
   catch(e){ if(geoEl) geoEl.textContent='unavailable'; }

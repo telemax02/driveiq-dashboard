@@ -37,8 +37,6 @@ Deno.serve(async (req: Request) => {
   if (!jwt) return json({ error: "Not authenticated" }, 401);
   const { data: caller, error: callerErr } = await admin.auth.getUser(jwt);
   if (callerErr || !caller?.user) return json({ error: "Not authenticated" }, 401);
-  const { data: me } = await admin.from("profiles").select("role").eq("id", caller.user.id).single();
-  if (!me || me.role !== "admin") return json({ error: "Admins only" }, 403);
   const callerId = caller.user.id;
 
   let body: Record<string, unknown> = {};
@@ -46,6 +44,33 @@ Deno.serve(async (req: Request) => {
   const action = String(body.action || "");
 
   try {
+    // Any signed-in user may record their OWN session IP + approx location.
+    if (action === "record_login") {
+      const xff = req.headers.get("x-forwarded-for") || "";
+      const ip = (xff.split(",")[0] || req.headers.get("x-real-ip") || "").trim();
+      const now = new Date().toISOString();
+      const email = caller.user.email ?? null;
+      if (!ip) {
+        await admin.from("user_logins").upsert({ user_id: callerId, email, last_login: now }, { onConflict: "user_id" });
+        return json({ ok: true });
+      }
+      // Only geo-locate when the IP changed (saves geo-IP lookups).
+      const { data: existing } = await admin.from("user_logins").select("ip, city, country").eq("user_id", callerId).maybeSingle();
+      let city = (existing?.city as string) || "", country = (existing?.country as string) || "";
+      if (!existing || existing.ip !== ip || (!city && !country)) {
+        try {
+          const r = await fetch("https://ipapi.co/" + encodeURIComponent(ip) + "/json/", { headers: { "User-Agent": "DriveIQ" } });
+          const j = await r.json(); city = j.city || ""; country = j.country_name || j.country || "";
+        } catch (_) { /* best-effort geo */ }
+      }
+      await admin.from("user_logins").upsert({ user_id: callerId, email, ip, city, country, last_login: now }, { onConflict: "user_id" });
+      return json({ ok: true });
+    }
+
+    // Everything below is admin-only.
+    const { data: me } = await admin.from("profiles").select("role").eq("id", callerId).single();
+    if (!me || me.role !== "admin") return json({ error: "Admins only" }, 403);
+
     if (action === "list") {
       const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (error) return json({ error: error.message }, 400);
@@ -61,16 +86,18 @@ Deno.serve(async (req: Request) => {
         last_sign_in_at: u.last_sign_in_at ?? null,
       }));
       users.sort((a, b) => (a.email > b.email ? 1 : -1));
-      // Best-effort: attach the most recent login IP from the auth audit logs
-      // (needs the admin_user_logins() SQL function; harmless if it isn't there).
+      // Attach last recorded login IP + approx location (from user_logins, which
+      // the record_login action writes; harmless if the table isn't there yet).
       try {
-        const { data: logins } = await admin.rpc("admin_user_logins");
-        const ipBy: Record<string, string> = {};
-        for (const r of (logins ?? []) as Array<{ user_id: string; ip: string }>) {
-          if (r.user_id) ipBy[r.user_id] = r.ip || "";
+        const { data: ul } = await admin.from("user_logins").select("user_id, ip, city, country");
+        const by: Record<string, { ip?: string; city?: string; country?: string }> = {};
+        for (const r of (ul ?? []) as Array<{ user_id: string; ip: string; city: string; country: string }>) by[r.user_id] = r;
+        for (const u of users) {
+          const rec = by[u.id];
+          (u as Record<string, unknown>).ip = rec?.ip || "";
+          (u as Record<string, unknown>).loc = rec ? [rec.city, rec.country].filter(Boolean).join(", ") : "";
         }
-        for (const u of users) (u as Record<string, unknown>).ip = ipBy[u.id] || "";
-      } catch (_) { /* function not created yet */ }
+      } catch (_) { /* user_logins not created yet */ }
       return json({ users });
     }
 
