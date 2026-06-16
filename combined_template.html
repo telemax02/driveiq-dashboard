@@ -827,12 +827,38 @@ function showLogin(){
   document.getElementById('app-root').style.display='none';
   document.getElementById('login-view').style.display='flex';
 }
-function showApp(){
+async function showApp(){
+  if(!(await isAuthorized())){ return unauthorizedSignOut(); }
   document.getElementById('login-view').style.display='none';
   document.getElementById('setpw-view').style.display='none';
   document.getElementById('app-root').style.display='block';
   startApp();
   loadRole();
+}
+// Invited-only gate: admins always pass; everyone else must be on the allowlist.
+// Fails open if the allowlist table doesn't exist yet (pre-lockdown) so login isn't broken.
+async function isAuthorized(){
+  try{
+    var u=await _sb.auth.getUser(); var user=u&&u.data&&u.data.user; if(!user) return false;
+    var pr=await _sb.from('profiles').select('role').eq('id',user.id).maybeSingle();
+    if(pr&&pr.data&&pr.data.role==='admin') return true;
+    var email=(user.email||'').toLowerCase();
+    var al=await _sb.from('allowed_emails').select('email').eq('email',email).maybeSingle();
+    if(al&&al.error){
+      var c=al.error.code||'', m=al.error.message||'';
+      if(c==='42P01'||/relation .*does not exist|could not find the table/i.test(m)) return true; // allowlist not set up yet
+      return true; // unknown error -> don't lock out (RLS still protects the data)
+    }
+    return !!(al&&al.data);
+  }catch(e){ return true; }
+}
+async function unauthorizedSignOut(){
+  try{ await _sb.auth.signOut(); }catch(e){}
+  document.getElementById('app-root').style.display='none';
+  document.getElementById('setpw-view').style.display='none';
+  document.getElementById('login-view').style.display='flex';
+  var e=document.getElementById('login-err');
+  if(e){ e.textContent="This account isn't authorised yet — ask an admin to invite your email."; e.style.display='block'; }
 }
 function showSetPassword(){
   document.getElementById('login-view').style.display='none';

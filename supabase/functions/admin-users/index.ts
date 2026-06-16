@@ -67,6 +67,8 @@ Deno.serve(async (req: Request) => {
     if (action === "invite" || action === "resend") {
       const email = String(body.email || "").trim();
       if (!EMAIL_RE.test(email)) return json({ error: "A valid email is required" }, 400);
+      // Authorize this email (allowlist) regardless of whether the email delivers.
+      await admin.from("allowed_emails").upsert({ email: email.toLowerCase() }, { onConflict: "email" });
       const redirectTo = Deno.env.get("INVITE_REDIRECT_TO") || undefined;
       const { data, error } = await admin.auth.admin.inviteUserByEmail(
         email,
@@ -80,8 +82,11 @@ Deno.serve(async (req: Request) => {
       const id = String(body.id || "");
       if (!id) return json({ error: "User id is required" }, 400);
       if (id === callerId) return json({ error: "You can't remove your own account" }, 400);
+      const { data: target } = await admin.auth.admin.getUserById(id);
+      const targetEmail = target?.user?.email?.toLowerCase();
       const { error } = await admin.auth.admin.deleteUser(id);
       if (error) return json({ error: error.message }, 400);
+      if (targetEmail) await admin.from("allowed_emails").delete().eq("email", targetEmail);
       return json({ ok: true });
     }
 
