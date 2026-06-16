@@ -666,6 +666,15 @@ function selectV(plate){
   });
 }
 
+// A stored GPS track is only trustworthy if it actually spans the trip's real
+// start/end. GPS gaps (cold start, signal loss) can leave a floating partial
+// track; when that happens we fall back to the road route between the true
+// endpoints so the map shows the correct trip rather than a stray segment.
+function _trackSpansTrip(tk,slat,slon,elat,elon){
+  if(!tk||tk.length<2) return false;
+  function km(la1,lo1,la2,lo2){ var x=(la1-la2)*111, y=(lo1-lo2)*Math.cos(la1*Math.PI/180)*111; return Math.sqrt(x*x+y*y); }
+  return km(tk[0][0],tk[0][1],slat,slon)<1.5 && km(tk[tk.length-1][0],tk[tk.length-1][1],elat,elon)<1.5;
+}
 function initLeafletMap(mapDiv){
   if(mapDiv._mapDone)return;mapDiv._mapDone=true;
   const slat=+mapDiv.dataset.slat,slon=+mapDiv.dataset.slon;
@@ -693,7 +702,7 @@ function initLeafletMap(mapDiv){
   if(tid){
     _sb.from('trip_tracks').select('track').eq('trip_id',tid).maybeSingle().then(function(res){
       var tk=(res&&!res.error&&res.data)?res.data.track:null;
-      if(tk&&tk.length>1){
+      if(tk&&tk.length>1&&_trackSpansTrip(tk,slat,slon,elat,elon)){
         const pl=L.polyline(tk,{color:'#1e3a8a',weight:3,opacity:0.9}).addTo(map);
         map.fitBounds(pl.getBounds(),{padding:[14,14]});
       }else{osrm();}
@@ -760,7 +769,7 @@ async function openTripMap(tripId,slat,slon,elat,elon){
     if(!res.error) row=res.data;
   }catch(e){}
 
-  if(row&&row.track&&row.track.length>1){
+  if(row&&row.track&&row.track.length>1&&_trackSpansTrip(row.track,slat,slon,elat,elon)){
     const pl=L.polyline(row.track,{color:'#1e3a8a',weight:4,opacity:0.9}).addTo(map);
     map.fitBounds(pl.getBounds(),{padding:[30,30]});
   } else {
