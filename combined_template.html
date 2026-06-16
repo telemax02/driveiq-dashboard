@@ -218,7 +218,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <div><div class="slabel">Vehicle ranking &mdash; click to view trips</div><div id="ranking"></div></div>
       <div><div class="slabel" id="trip-label">Select a vehicle</div>
       <div id="vehicle-summary"></div>
-      <div id="trips" style="max-height:615px;overflow-y:auto;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;"><div class="empty"><i class="ti ti-arrow-left" style="font-size:18px;display:block;margin-bottom:8px;"></i>Click a vehicle to see all trips</div></div></div>
+      <div id="trips" style="scroll-behavior:smooth;"><div class="empty"><i class="ti ti-arrow-left" style="font-size:18px;display:block;margin-bottom:8px;"></i>Click a vehicle to see all trips</div></div></div>
     </div>
   </div>
 
@@ -470,15 +470,6 @@ function renderRanking(){
   });
 }
 
-// Size the trips list to fill down to the bottom of the viewport (instead of a
-// fixed height). Recomputed on each selection + on resize; content above it
-// (fleet panel, driver summary card) varies in height, so we measure live.
-function fitTripsHeight(){
-  var t=document.getElementById('trips'); if(!t||!t.offsetParent) return;
-  var top=t.getBoundingClientRect().top;
-  t.style.maxHeight=Math.max(300, Math.round(window.innerHeight - top - 20))+'px';
-}
-window.addEventListener('resize', fitTripsHeight);
 function selectV(plate){
   sel=plate;renderRanking();
   const v=vehicles.find(function(x){return x.plate===plate;});
@@ -614,7 +605,6 @@ function selectV(plate){
       mapObserver.observe(mapDiv);
     }
   });
-  requestAnimationFrame(fitTripsHeight);
 }
 
 function initLeafletMap(mapDiv){
