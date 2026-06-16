@@ -523,6 +523,11 @@ function selectV(plate){
   const v=vehicles.find(function(x){return x.plate===plate;});
   var _drD=loadDrivers()[plate]||{};
   var drName=((_drD.first||'').trim()+' '+((_drD.last||'').trim()?(_drD.last||'').trim().toUpperCase()+'.':'')).trim();
+  function ageTag(a){
+    var m={'Under 25':['#c084fc','rgba(139,92,246,0.18)'],'25–34':['var(--info)','var(--info-bg)'],'35–44':['#5eead4','rgba(20,184,166,0.15)'],'45–54':['var(--warning)','var(--warning-bg)'],'55–64':['var(--success)','var(--success-bg)'],'65+':['#f87171','var(--danger-bg)']};
+    var c=m[a];
+    return a&&c?'<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:'+c[1]+';color:'+c[0]+';margin-left:7px;vertical-align:3px;">'+a+'</span>':'';
+  }
   document.getElementById('trip-label').style.display='none'; // title now lives inside the summary card
   const el=document.getElementById('trips');
   const sumEl=document.getElementById('vehicle-summary');
@@ -563,7 +568,7 @@ function selectV(plate){
   sumEl.innerHTML='<div style="background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--info);">'
     +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">'
       +'<div>'
-        +'<div style="font-size:16px;font-weight:700;color:var(--text);line-height:1.15;">'+(drName||v.plate)+'</div>'
+        +'<div style="font-size:16px;font-weight:700;color:var(--text);line-height:1.15;">'+(drName||v.plate)+ageTag(_drD.age)+'</div>'
         +'<div style="font-size:12px;color:var(--text2);">'+v.plate+' &middot; '+v.make+' &middot; '+v.trips.length+' trip'+(v.trips.length!==1?'s':'')+' scored</div>'
       +'</div>'
       +riskBlock
