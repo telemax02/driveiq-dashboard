@@ -157,6 +157,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .dr-row input:focus,.dr-row select:focus{border-color:var(--info);}
 .dr-row select option{background:var(--bg2);color:var(--text);}
 .dr-row .sc{font-size:15px;font-weight:500;text-align:right;white-space:nowrap;}
+/* ── Admin users table ── */
+.au-head,.au-row{display:grid;grid-template-columns:minmax(170px,1.6fr) minmax(120px,1.1fr) 88px 92px 156px;gap:8px;align-items:center;min-width:680px;}
+.au-head{padding:2px 12px;}
+.au-head span{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;}
+.au-row{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:7px 12px;margin-bottom:5px;}
+.au-row input,.au-row select{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 8px;outline:none;-webkit-appearance:none;}
+.au-row input:focus,.au-row select:focus{border-color:var(--info);}
+.au-row select option{background:var(--bg2);color:var(--text);}
+.au-status{display:flex;align-items:center;gap:6px;min-width:0;}
+.au-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+.au-btn{font-size:11px;border-radius:6px;padding:5px 8px;cursor:pointer;border:0.5px solid var(--border);background:var(--bg3);color:var(--text2);white-space:nowrap;line-height:1;}
+.au-btn:hover{border-color:var(--info);color:var(--text);}
+.au-btn.save{background:#7cb83e;color:#13260b;font-weight:700;border:none;}
+.au-btn.del{background:var(--danger-bg);border-color:var(--danger);color:var(--danger);margin-left:auto;}
 </style>
 </head>
 <body>
@@ -1010,42 +1024,46 @@ function _adminMsg(text,color){
   var m=document.getElementById('inv-msg'); if(!m) return;
   m.textContent=text; m.style.color=color||'var(--text2)'; m.style.display='block';
 }
+var _adminUsersCache=null;
 async function loadAdminUsers(){
   var el=document.getElementById('admin-users'); if(!el) return;
-  el.innerHTML='<div class="empty">Loading…</div>';
+  // Cache: render the last-known list instantly, then refresh in the background
+  // and only re-render if it actually changed (so it loads quick and doesn't
+  // wipe an in-progress edit on every tab switch).
+  if(_adminUsersCache) renderAdminUsers(_adminUsersCache);
+  else el.innerHTML='<div class="empty">Loading…</div>';
   try{
     var out=await _adminCall({action:'list'});
-    renderAdminUsers(out.users||[]);
+    var fresh=out.users||[];
+    var changed=!_adminUsersCache || JSON.stringify(_adminUsersCache)!==JSON.stringify(fresh);
+    _adminUsersCache=fresh;
+    if(changed) renderAdminUsers(fresh);
   }catch(e){
-    el.innerHTML='<div class="empty" style="text-align:left;line-height:1.6;">Could not load users: '+esc(e.message)
+    if(!_adminUsersCache) el.innerHTML='<div class="empty" style="text-align:left;line-height:1.6;">Could not load users: '+esc(e.message)
       +'<br><span style="font-size:11px;color:var(--text3);">Make sure the <b>admin-users</b> Edge Function is deployed in Supabase.</span></div>';
   }
 }
 function renderAdminUsers(users){
   var el=document.getElementById('admin-users');
   if(!users.length){ el.innerHTML='<div class="empty">No users yet.</div>'; return; }
-  var inp='background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:7px 9px;outline:none;';
-  el.innerHTML=users.map(function(u){
+  var head='<div class="au-head"><span>Email</span><span>Display name</span><span>Role</span><span>Status</span><span>Actions</span></div>';
+  el.innerHTML=head+users.map(function(u){
     var isMe=currentUser&&u.id===currentUser.id, pending=!u.confirmed;
     var status='<span class="tag" style="background:'+(pending?'var(--warning-bg)':'var(--success-bg)')+';color:'+(pending?'var(--warning)':'var(--success)')+';">'+(pending?'pending':'active')+'</span>';
-    return '<div class="stat" style="margin-bottom:8px;display:flex;flex-direction:column;gap:8px;">'
-      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-        +'<input id="u-email-'+u.id+'" type="email" value="'+esc(u.email)+'" style="flex:1;min-width:180px;'+inp+'">'
-        +status+(isMe?'<span style="font-size:11px;color:var(--text3);">you</span>':'')
-      +'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-        +'<input id="u-name-'+u.id+'" type="text" placeholder="Display name" value="'+esc(u.name||'')+'" style="flex:1;min-width:140px;'+inp+'">'
-        +'<select id="u-role-'+u.id+'" '+(isMe?'disabled':'')+' style="'+inp+(isMe?'opacity:.6;':'')+'">'
-          +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
-          +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
-        +'</select>'
-      +'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-        +'<button onclick="saveUser(\''+u.id+'\')" style="font-size:12px;background:#7cb83e;color:#13260b;font-weight:700;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;">Save</button>'
+    return '<div class="au-row">'
+      +'<input id="u-email-'+u.id+'" type="email" value="'+esc(u.email)+'">'
+      +'<input id="u-name-'+u.id+'" type="text" placeholder="Display name" value="'+esc(u.name||'')+'">'
+      +'<select id="u-role-'+u.id+'" '+(isMe?'disabled style="opacity:.6;"':'')+'>'
+        +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
+        +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
+      +'</select>'
+      +'<div class="au-status">'+status+(isMe?'<span style="font-size:10px;color:var(--text3);">you</span>':'')+'</div>'
+      +'<div class="au-actions">'
+        +'<button class="au-btn save" onclick="saveUser(\''+u.id+'\')">Save</button>'
         +(pending
-            ?'<button onclick="resendInvite(\''+u.id+'\')" style="font-size:12px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;cursor:pointer;">Resend invite</button>'
-            :'<button onclick="resetPassword(\''+u.id+'\')" style="font-size:12px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;cursor:pointer;">Reset password</button>')
-        +(isMe?'':'<button onclick="removeUser(\''+u.id+'\')" style="font-size:12px;background:var(--danger-bg);border:0.5px solid var(--danger);color:var(--danger);border-radius:6px;padding:6px 12px;cursor:pointer;margin-left:auto;">Remove</button>')
+            ?'<button class="au-btn" title="Resend invite email" onclick="resendInvite(\''+u.id+'\')">Resend</button>'
+            :'<button class="au-btn" title="Send password-reset email" onclick="resetPassword(\''+u.id+'\')">Reset</button>')
+        +(isMe?'':'<button class="au-btn del" title="Remove user" onclick="removeUser(\''+u.id+'\')"><i class="ti ti-trash" style="font-size:12px;"></i></button>')
       +'</div>'
     +'</div>';
   }).join('');
