@@ -9,75 +9,36 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
-<script>
-/* Apply saved theme before paint (default light = Telemax brand) to avoid a flash */
-(function(){try{var t=localStorage.getItem('diq-theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();
-function toggleTheme(){var c=document.documentElement.getAttribute('data-theme')||'light';var n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('diq-theme',n);}catch(e){}applyThemeIcon();}
-function applyThemeIcon(){var t=document.documentElement.getAttribute('data-theme')||'light';var el=document.getElementById('theme-toggle');if(el)el.innerHTML='<i class="ti '+(t==='dark'?'ti-sun':'ti-moon')+'"></i>';}
-document.addEventListener('DOMContentLoaded',applyThemeIcon);
-</script>
 <style>
-/* Light theme = Telemax brand (default). Dark theme overrides below. */
-:root{
-  --bg:#F7F7F5;--bg2:#FFFFFF;--bg3:#F2F4F7;
-  --text:#1D2939;--text2:#667085;--text3:#98A2B3;
-  --border:#E4E7EC;
-  --success:#009818;--success-bg:#DBF8E0;
-  --info:#0075FF;--info-bg:#F2F7FF;
-  --warning:#DC6803;--warning-bg:#FFFAEB;
-  --danger:#D92D20;--danger-bg:#FEF3F2;
-  --gold:#EF9F27;
-  --brand:#0075FF;--brand-hover:#66ADFF;
-  --shadow:0 1px 2px rgba(16,24,40,0.05);
-  --radius:8px;--radius-lg:12px;
-  color-scheme:light;
-}
-:root[data-theme="dark"]{
-  --bg:#1e1e1c;--bg2:#2a2a27;--bg3:#333330;
-  --text:#f0efeb;--text2:#b4b2a9;--text3:#6b6a64;
-  --border:rgba(255,255,255,0.10);
-  --success:#97c459;--success-bg:#27500a;
-  --info:#85b7eb;--info-bg:#0c447c;
-  --warning:#EF9F27;--warning-bg:#633806;
-  --danger:#ef4444;--danger-bg:#791f1f;
-  --gold:#EF9F27;
-  --brand:#66ADFF;--brand-hover:#85b7eb;
-  --shadow:none;
-  color-scheme:dark;
-}
+:root{--bg:#1e1e1c;--bg2:#2a2a27;--bg3:#333330;--text:#f0efeb;--text2:#b4b2a9;--text3:#6b6a64;--border:rgba(255,255,255,0.10);--success:#97c459;--success-bg:#27500a;--info:#85b7eb;--info-bg:#0c447c;--warning:#EF9F27;--warning-bg:#633806;--danger:#ef4444;--danger-bg:#791f1f;--gold:#EF9F27;--radius:8px;--radius-lg:12px;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Montserrat','Open Sans',Helvetica,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;transition:background-color .2s ease,color .2s ease;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
 .page{max-width:1100px;margin:0 auto;padding:24px 20px;}
 /* ── Header & Tabs ── */
 .header{display:flex;align-items:center;margin-bottom:20px;gap:12px;}
 .header h1{font-size:20px;font-weight:500;white-space:nowrap;}
 .tabs{display:flex;background:var(--bg2);border-radius:8px;padding:3px;gap:2px;border:0.5px solid var(--border);}
-.tab{background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:500;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
-.tab:hover{color:var(--text);}
-.tab.active{background:var(--bg3);color:var(--brand);border:0.5px solid var(--border);}
+.tab{background:transparent;border:none;color:var(--text3);font-size:12px;font-weight:500;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.tab:hover{color:var(--text2);}
+.tab.active{background:var(--bg3);color:var(--text);border:0.5px solid var(--border);}
 .badge{font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--border);color:var(--text2);white-space:nowrap;}
-.theme-toggle{background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;box-shadow:var(--shadow);transition:background .15s,color .15s;align-self:center;}
-.theme-toggle:hover{color:var(--text);background:var(--bg3);}
 /* ── Dashboard ── */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
-.stat{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);}
+.stat{background:var(--bg2);border-radius:var(--radius);padding:14px;}
 .stat .lbl{font-size:11px;color:var(--text2);} .stat .val{font-size:26px;font-weight:500;margin-top:5px;} .stat .sub{font-size:11px;color:var(--text3);margin-top:2px;}
 .main{display:grid;grid-template-columns:260px 1fr;gap:18px;margin-bottom:20px;}
 .slabel{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
 .rank-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--radius);cursor:pointer;border:0.5px solid transparent;transition:background .15s;}
 .rank-row:hover{background:var(--bg2);} .rank-row.active{background:var(--bg2);border-color:var(--border);}
 .bwrap{flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;} .bfill{height:100%;border-radius:2px;}
-.trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;box-shadow:var(--shadow);}
+.trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;}
 .comps{display:flex;gap:6px;} .comp{text-align:center;flex:1;}
 .comp .ck{font-size:11px;color:var(--text2);} .comp .cv{font-size:13px;font-weight:500;margin-top:2px;} .comp .cs{font-size:15px;color:var(--gold);margin-top:2px;line-height:1;letter-spacing:1px;}
 .tag{font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;}
 .td{background:var(--danger-bg);color:var(--danger);} .tw{background:var(--warning-bg);color:var(--warning);}
 .ts{background:var(--success-bg);color:var(--success);} .tl{background:var(--info-bg);color:var(--info);}
 .incidents{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px;}
-.inc{background:var(--bg2);border:0.5px solid var(--danger);border-radius:var(--radius-lg);padding:12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow);}
+.inc{background:var(--bg2);border:0.5px solid var(--danger);border-radius:var(--radius-lg);padding:12px;display:flex;gap:10px;align-items:flex-start;}
 .inc-info{flex:1;min-width:0;}
 .inc-map{width:110px;height:110px;border-radius:6px;overflow:hidden;flex-shrink:0;}
 .inc .mx{font-size:20px;font-weight:500;color:var(--danger);margin:4px 0 3px;}
@@ -114,7 +75,7 @@ body{font-family:'Montserrat','Open Sans',Helvetica,sans-serif;background:var(--
 /* ── Leaderboard ── */
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:28px;padding:0 10px;}
 .podium-slot{flex:1;max-width:220px;text-align:center;}
-.podium-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 12px 12px;position:relative;box-shadow:var(--shadow);}
+.podium-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 12px 12px;position:relative;}
 .podium-card.p1{border-color:rgba(239,159,39,0.4);box-shadow:0 0 20px rgba(239,159,39,0.08);}
 .podium-card.p2{border-color:rgba(192,192,192,0.25);}
 .podium-card.p3{border-color:rgba(176,120,76,0.25);}
@@ -136,7 +97,7 @@ body{font-family:'Montserrat','Open Sans',Helvetica,sans-serif;background:var(--
 .lb-list-header{display:grid;grid-template-columns:36px 1fr 60px 44px 44px 44px 44px 30px;gap:6px;align-items:center;padding:6px 10px;margin-bottom:4px;}
 .lb-list-header span{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
 .lb-list-header span.right{text-align:right;}
-.lb-row{display:grid;grid-template-columns:36px 1fr 60px 44px 44px 44px 44px 30px;gap:6px;align-items:center;padding:9px 10px;border-radius:var(--radius);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:5px;transition:background .15s;box-shadow:var(--shadow);}
+.lb-row{display:grid;grid-template-columns:36px 1fr 60px 44px 44px 44px 44px 30px;gap:6px;align-items:center;padding:9px 10px;border-radius:var(--radius);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:5px;transition:background .15s;}
 .lb-row:hover{background:var(--bg3);}
 .lb-row.top{border-color:rgba(239,159,39,0.3);}
 .rk{font-size:13px;font-weight:500;color:var(--text3);text-align:center;}
@@ -147,7 +108,7 @@ body{font-family:'Montserrat','Open Sans',Helvetica,sans-serif;background:var(--
 @media(max-width:700px){.main{grid-template-columns:1fr;}.stats{grid-template-columns:1fr;}.lb-list-header,.lb-row{grid-template-columns:30px 1fr 52px 40px 40px 28px;}.hide-m{display:none;}}
 /* ── Drivers ── */
 .dr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
-.dr-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow);}
+.dr-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;}
 .dr-card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
 .dr-avatar{width:40px;height:40px;border-radius:50%;background:var(--bg3);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;font-weight:600;color:var(--text2);}
 .dr-plate{font-size:14px;font-weight:600;}
@@ -158,7 +119,7 @@ body{font-family:'Montserrat','Open Sans',Helvetica,sans-serif;background:var(--
 .dr-field label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .dr-field input,.dr-field select{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:7px 10px;outline:none;transition:border-color .15s;-webkit-appearance:none;}
 .dr-field input:focus,.dr-field select:focus{border-color:var(--info);}
-.dr-field select option{background:var(--bg2);color:var(--text);}
+.dr-field select option{background:#2a2a27;}
 .dr-saved{font-size:10px;color:var(--success);opacity:0;transition:opacity .4s;margin-top:6px;height:14px;}
 .dr-saved.show{opacity:1;}
 .dr-name-tag{font-size:11px;color:var(--text2);margin-top:1px;}
@@ -170,7 +131,7 @@ body{font-family:'Montserrat','Open Sans',Helvetica,sans-serif;background:var(--
   <div class="header">
     <div style="display:flex;flex-direction:column;gap:0;line-height:1;flex:1;">
       <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;">
-        <span style="color:var(--text2);">Drive</span><span style="color:#7cb83e;">IQ</span>
+        <span style="color:var(--text3);">Drive</span><span style="color:#7cb83e;">IQ</span>
       </div>
       <div style="border-top:2px solid #7cb83e;margin-top:4px;padding-top:4px;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--text3);text-transform:uppercase;">Intelligent Driving Analytics</div>
     </div>
@@ -180,10 +141,9 @@ body{font-family:'Montserrat','Open Sans',Helvetica,sans-serif;background:var(--
       <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
     </div>
-    <div style="flex:1;display:flex;justify-content:flex-end;align-items:center;gap:20px;">
+    <div style="flex:1;display:flex;justify-content:flex-end;gap:24px;">
       <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Scored trips</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-trips">—</div></div>
       <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Last updated</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-updated">—</div></div>
-      <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark theme" aria-label="Toggle theme"><i class="ti ti-moon"></i></button>
     </div>
   </div>
 
