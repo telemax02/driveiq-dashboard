@@ -59,8 +59,8 @@ Deno.serve(async (req: Request) => {
       let city = (existing?.city as string) || "", country = (existing?.country as string) || "";
       if (!existing || existing.ip !== ip || (!city && !country)) {
         try {
-          const r = await fetch("https://ipapi.co/" + encodeURIComponent(ip) + "/json/", { headers: { "User-Agent": "DriveIQ" } });
-          const j = await r.json(); city = j.city || ""; country = j.country_name || j.country || "";
+          const r = await fetch("https://ipwho.is/" + encodeURIComponent(ip), { headers: { "User-Agent": "DriveIQ" } });
+          const j = await r.json(); city = (j && j.city) || ""; country = (j && j.country) || "";
         } catch (_) { /* best-effort geo */ }
       }
       await admin.from("user_logins").upsert({ user_id: callerId, email, ip, city, country, last_login: now }, { onConflict: "user_id" });
@@ -222,11 +222,11 @@ Deno.serve(async (req: Request) => {
       const ip = String(body.ip || "").trim();
       if (!ip) return json({ city: "", region: "", country: "" });
       try {
-        const r = await fetch("https://ipapi.co/" + encodeURIComponent(ip) + "/json/", {
+        const r = await fetch("https://ipwho.is/" + encodeURIComponent(ip), {
           headers: { "User-Agent": "DriveIQ-admin" },
         });
         const j = await r.json();
-        return json({ city: j.city || "", region: j.region || "", country: j.country_name || j.country || "" });
+        return json({ city: j.city || "", region: j.region || "", country: j.country || "" });
       } catch (_) {
         return json({ city: "", region: "", country: "" });
       }
