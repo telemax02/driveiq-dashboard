@@ -74,7 +74,14 @@ Deno.serve(async (req: Request) => {
         email,
         redirectTo ? { redirectTo } : undefined,
       );
-      if (error) return json({ error: error.message }, 400);
+      if (error) {
+        // On "resend", a user who already accepted shows up as already-registered.
+        // The allowlist upsert above already (re)authorised them, so report success.
+        if (action === "resend" && /already|exists|registered/i.test(error.message)) {
+          return json({ ok: true, email });
+        }
+        return json({ error: error.message }, 400);
+      }
       return json({ ok: true, email: data?.user?.email ?? email });
     }
 
@@ -82,12 +89,25 @@ Deno.serve(async (req: Request) => {
       const id = String(body.id || "");
       if (!id) return json({ error: "User id is required" }, 400);
       if (id === callerId) return json({ error: "You can't remove your own account" }, 400);
+      // Resolve the email BEFORE deleting so we can clear the allowlist grant.
+      // Fall back to profiles.email if the auth lookup is empty (transient/null email).
       const { data: target } = await admin.auth.admin.getUserById(id);
-      const targetEmail = target?.user?.email?.toLowerCase();
+      let targetEmail = target?.user?.email?.toLowerCase();
+      if (!targetEmail) {
+        const { data: prof } = await admin.from("profiles").select("email").eq("id", id).maybeSingle();
+        const pe = prof?.email as string | undefined;
+        if (pe) targetEmail = pe.toLowerCase();
+      }
       const { error } = await admin.auth.admin.deleteUser(id);
       if (error) return json({ error: error.message }, 400);
-      if (targetEmail) await admin.from("allowed_emails").delete().eq("email", targetEmail);
-      return json({ ok: true });
+      if (targetEmail) {
+        await admin.from("allowed_emails").delete().eq("email", targetEmail);
+        return json({ ok: true });
+      }
+      return json({
+        ok: true,
+        warning: "User deleted, but their email could not be resolved to clear the invite allowlist. Check allowed_emails manually.",
+      });
     }
 
     if (action === "update") {
@@ -99,13 +119,44 @@ Deno.serve(async (req: Request) => {
 
       if (email !== undefined || name !== undefined) {
         if (email !== undefined && !EMAIL_RE.test(email)) return json({ error: "Invalid email" }, 400);
+
+        // Only when an email is supplied do we need the current account: to tell a
+        // real rename from the unchanged email the UI always re-sends, and to know
+        // the old allowlist key. Bail safely if we can't load it (don't half-apply).
+        let oldEmail: string | undefined;
+        if (email !== undefined) {
+          const { data: current, error: curErr } = await admin.auth.admin.getUserById(id);
+          if (curErr || !current?.user) return json({ error: "Could not load that user; please try again." }, 404);
+          oldEmail = current.user.email?.toLowerCase();
+        }
+
+        const emailChanged = email !== undefined && email.toLowerCase() !== oldEmail;
         const attrs: Record<string, unknown> = {};
-        if (email !== undefined) attrs.email = email;
+        if (emailChanged) attrs.email = email;
         if (name !== undefined) attrs.user_metadata = { name };
-        const { error } = await admin.auth.admin.updateUserById(id, attrs);
-        if (error) return json({ error: error.message }, 400);
-        // keep profiles.email in sync
-        if (email !== undefined) await admin.from("profiles").update({ email }).eq("id", id);
+        if (Object.keys(attrs).length) {
+          const { error } = await admin.auth.admin.updateUserById(id, attrs);
+          if (error) return json({ error: error.message }, 400);
+        }
+        if (emailChanged) {
+          const newEmail = (email as string).toLowerCase();
+          // keep profiles.email in sync (lowercased, like the allowlist + backfill)
+          await admin.from("profiles").update({ email: newEmail }).eq("id", id);
+          // Keep the invite grant attached to the new email so a renamed user
+          // isn't locked out by RLS. If the OLD email was known and NOT on the
+          // allowlist, leave them off (never re-authorise a removed grant);
+          // otherwise authorise the new email.
+          if (oldEmail) {
+            const { data: had } = await admin.from("allowed_emails")
+              .select("email").eq("email", oldEmail).maybeSingle();
+            if (had) {
+              await admin.from("allowed_emails").delete().eq("email", oldEmail);
+              await admin.from("allowed_emails").upsert({ email: newEmail }, { onConflict: "email" });
+            }
+          } else {
+            await admin.from("allowed_emails").upsert({ email: newEmail }, { onConflict: "email" });
+          }
+        }
       }
       if (role !== undefined) {
         if (role !== "admin" && role !== "user") return json({ error: "Invalid role" }, 400);
