@@ -80,7 +80,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 #trips::-webkit-scrollbar-thumb:hover{background:var(--text3);}
 .trip-map-sq{width:128px;height:128px;border-radius:8px;overflow:hidden;border:0.5px solid var(--border);flex-shrink:0;cursor:pointer;position:relative;transition:border-color .15s,transform .15s;}
 .trip-map-sq:hover{border-color:var(--info);transform:scale(1.03);}
-.trip-map-sq::after{content:"\2922";position:absolute;bottom:3px;right:3px;z-index:500;font-size:12px;line-height:1;color:#fff;background:rgba(0,0,0,.55);border-radius:4px;padding:2px 4px;pointer-events:none;}
+/* Always-visible pill so it's obvious the map is clickable */
+.trip-map-sq::after{content:"\2922  Expand";position:absolute;bottom:4px;right:4px;z-index:500;font-size:9px;font-weight:700;letter-spacing:.3px;line-height:1;color:#fff;background:rgba(0,0,0,.6);border-radius:5px;padding:3px 6px;pointer-events:none;transition:opacity .15s;}
+.trip-map-sq:hover::after{opacity:0;}
+/* Hover overlay spelling out what a click does */
+.trip-map-sq::before{content:"\2922  View route & events";position:absolute;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;font-size:11px;font-weight:600;color:#fff;background:rgba(0,0,0,.5);opacity:0;transition:opacity .15s;pointer-events:none;}
+.trip-map-sq:hover::before{opacity:1;}
 /* Expanded trip-map modal */
 .tm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;}
 .tm-overlay.open{display:flex;}
