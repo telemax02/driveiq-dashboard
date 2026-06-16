@@ -100,6 +100,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .tm-legend .dot{width:10px;height:10px;border-radius:50%;border:1.5px solid #fff;}
 .tm-legend .li .ct{color:var(--text3);}
 .ev-pin{border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6);}
+/* ── FAQ accordion ── */
+.faq-item .faq-q{cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;transition:color .12s;}
+.faq-item .faq-q:hover{color:var(--info);}
+.faq-item .faq-q .faq-chev{margin-left:auto;font-size:11px;color:var(--text3);display:inline-block;transition:transform .2s;flex-shrink:0;}
+.faq-item.faq-collapsed .faq-q{margin-bottom:0;}
+.faq-item.faq-collapsed .faq-q .faq-chev{transform:rotate(-90deg);}
+.faq-item.faq-collapsed .faq-a{display:none;}
 /* ── Leaderboard ── */
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:28px;padding:0 10px;}
 .podium-slot{flex:1;max-width:220px;text-align:center;}
@@ -278,7 +285,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
        FAQ VIEW
   ══════════════════════════════════════════ -->
   <div id="view-faq" style="display:none;">
-    <div style="max-width:840px;margin:0 auto;">
+    <div id="faq-acc" style="max-width:840px;margin:0 auto;">
       <h2 style="font-size:22px;font-weight:600;color:var(--text);margin:4px 0 6px;">How DriveIQ works</h2>
       <p style="font-size:13px;color:var(--text2);line-height:1.65;margin:0 0 8px;">DriveIQ turns each vehicle's own GPS tracking data into a simple, fair safety score. Every score is built from how the vehicle was <b style="color:var(--text);">actually driven</b> — not from anyone's opinion — and the exact same rules are applied to every vehicle. Here's how it works, in plain English.</p>
       <div style="background:var(--success-bg);border:0.5px solid var(--success);border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12.5px;color:var(--success);line-height:1.55;"><i class="ti ti-shield-check" style="vertical-align:-1px;margin-right:4px;"></i> Fair by design: same rules for everyone, based on real data, using thresholds that match recognised industry standards.</div>
@@ -429,6 +436,26 @@ function switchTab(tab){
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
   if(tab==='admin') loadAdminUsers();
+  if(tab==='faq') setupFaqAccordion();
+}
+
+// FAQ: collapse each Q&A into a click-to-expand item (first one left open).
+// Progressive enhancement over the existing cards, so the answers still render
+// even if this never runs.
+function setupFaqAccordion(){
+  var c=document.getElementById('faq-acc'); if(!c||c._faqDone) return; c._faqDone=true;
+  var n=0;
+  c.querySelectorAll(':scope > div').forEach(function(card){
+    var divs=card.querySelectorAll(':scope > div');
+    if(divs.length<2) return; // skip the intro callout (no inner question/answer divs)
+    var q=divs[0], a=divs[1];
+    card.classList.add('faq-item'); q.classList.add('faq-q'); a.classList.add('faq-a');
+    var chev=document.createElement('span'); chev.className='faq-chev'; chev.textContent='▾';
+    q.appendChild(chev);
+    if(n>0) card.classList.add('faq-collapsed');
+    q.addEventListener('click',function(){ card.classList.toggle('faq-collapsed'); });
+    n++;
+  });
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
