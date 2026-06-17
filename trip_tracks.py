@@ -7,8 +7,10 @@ Event detection replicates the Flespi calc (id 2923614) expressions exactly — 
 speed/heading-delta thresholds — but keeps each firing message's lat/lon. Verified to
 match the calc's harsh_*_count per trip across all devices.
 
-Output: track_cache.json  {trip_id: {plate, track:[[lat,lon],...], events:[{type,lat,lon,ts,sev},...]}}
-Incremental: trips already cached are skipped.
+Output: track_cache.json  {"plate|trip_id": {plate, trip_id, track:[[lat,lon],...], events:[{type,lat,lon,ts,sev},...]}}
+Keyed by plate+id (NOT id alone): Flespi calc interval ids are unique per device
+but collide across devices, so id alone would let one vehicle overwrite another.
+Incremental: trips already cached (by composite key) are skipped.
 
 Run standalone:  python trip_tracks.py
 """
@@ -143,17 +145,18 @@ def build(scores_path=SCORES, cache_path=CACHE):
             continue
         for t in v['trips']:
             tid = str(t['id'])
-            if tid in cache:
+            key = f"{v['plate']}|{tid}"  # composite: interval ids collide across devices
+            if key in cache:
                 continue
             if t.get('begin_ts') and t.get('end_ts'):
-                todo.append((tid, dev, v['plate'], t['begin_ts'], t['end_ts']))
+                todo.append((key, tid, dev, v['plate'], t['begin_ts'], t['end_ts']))
 
     print(f'trip_tracks: {len(todo)} new trips to process ({len(cache)} cached)')
-    for tid, dev, plate, begin, end in todo:
+    for key, tid, dev, plate, begin, end in todo:
         try:
             msgs = fetch_messages(dev, begin, end)
             track, events = extract(msgs)
-            cache[tid] = {'plate': plate, 'track': track, 'events': events}
+            cache[key] = {'plate': plate, 'trip_id': int(tid), 'track': track, 'events': events}
             ne = {'brk':0,'acc':0,'crn':0,'spd':0}
             for e in events: ne[e['type']] += 1
             print(f'  #{tid} {plate}: {len(track)} pts, events brk/acc/crn/spd={ne["brk"]}/{ne["acc"]}/{ne["crn"]}/{ne["spd"]}')

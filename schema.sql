@@ -66,11 +66,16 @@ create table if not exists incidents (
 -- Per-trip driven GPS path + harsh-event locations (lazy-loaded by the dashboard
 -- when a trip's map is expanded). Kept OUT of latest_run to avoid bloating it.
 create table if not exists trip_tracks (
-  trip_id    bigint primary key,
-  plate      text,
+  trip_id    bigint not null,
+  plate      text   not null default '',
   track      jsonb default '[]',   -- [[lat,lon], ...] decimated driven path
   events     jsonb default '[]',   -- [{type,lat,lon,ts,sev}, ...] type in (brk,acc,crn,spd)
-  updated_at timestamptz default now()
+  updated_at timestamptz default now(),
+  -- The trip id is the Flespi calc interval id: unique PER DEVICE but it COLLIDES
+  -- ACROSS devices, so the key must include the plate or one vehicle's trip would
+  -- overwrite another's (showed the wrong vehicle's track/events on the map).
+  -- Existing single-column DBs: run supabase_trip_tracks_composite_key.sql to migrate.
+  primary key (plate, trip_id)
 );
 
 create table if not exists fleet_runs (

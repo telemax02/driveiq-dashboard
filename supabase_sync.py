@@ -274,11 +274,21 @@ def sync(scores_path):
     track_path = os.path.join(os.path.dirname(scores_path), 'track_cache.json')
     if os.path.exists(track_path):
         tc = json.load(open(track_path))
-        tracks = [{'trip_id': int(tid), 'plate': v.get('plate', ''),
-                   'track': v.get('track', []), 'events': v.get('events', [])}
-                  for tid, v in tc.items()]
+        # Cache may be keyed by composite "plate|id" (current) or bare "id" (legacy);
+        # take trip_id from the value, falling back to the key's numeric tail.
+        tracks = []
+        for k, v in tc.items():
+            tid = v.get('trip_id')
+            if tid is None:
+                try:
+                    tid = int(str(k).split('|')[-1])
+                except (ValueError, TypeError):
+                    continue
+            tracks.append({'trip_id': int(tid), 'plate': v.get('plate', ''),
+                           'track': v.get('track', []), 'events': v.get('events', [])})
         if tracks:
-            # small chunks: track payloads can be large (hundreds-1000+ GPS points each)
+            # small chunks: track payloads can be large (hundreds-1000+ GPS points each).
+            # upsert merges on the (plate, trip_id) primary key.
             _batch_upsert('trip_tracks', tracks, chunk=20)
         print(f'  trip_tracks: {len(tracks)} upserted')
 
