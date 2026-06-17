@@ -239,9 +239,10 @@ function selectV(plate){
       mapDiv.dataset.slat=t.slat;mapDiv.dataset.slon=t.slon;
       mapDiv.dataset.elat=t.elat;mapDiv.dataset.elon=t.elon;
       mapDiv.dataset.tid=t.id;
+      mapDiv.dataset.plate=plate;
       mapDiv.title='Click to expand — view route & event locations';
       mapDiv.addEventListener('click',function(){
-        openTripMap(t.id,+t.slat,+t.slon,+t.elat,+t.elon);
+        openTripMap(t.id,+t.slat,+t.slon,+t.elat,+t.elon,plate);
       });
       mapObserver.observe(mapDiv);
     }
@@ -262,6 +263,7 @@ function initLeafletMap(mapDiv){
   const slat=+mapDiv.dataset.slat,slon=+mapDiv.dataset.slon;
   const elat=+mapDiv.dataset.elat,elon=+mapDiv.dataset.elon;
   const tid=mapDiv.dataset.tid;
+  const plate=mapDiv.dataset.plate;
   const map=L.map(mapDiv,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
   const sIcon=L.divIcon({html:'<div style="background:#22c55e;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);"></div>',className:'',iconAnchor:[5,5]});
@@ -289,7 +291,9 @@ function initLeafletMap(mapDiv){
   }
   // Prefer the real driven GPS track (lazy per-thumbnail); fall back to OSRM estimate
   if(tid){
-    _sb.from('trip_tracks').select('track,events').eq('trip_id',tid).maybeSingle().then(function(res){
+    var _q=_sb.from('trip_tracks').select('track,events').eq('trip_id',tid);
+    if(plate)_q=_q.eq('plate',plate); // trip ids can collide across vehicles — scope to this plate
+    _q.maybeSingle().then(function(res){
       var data=(res&&!res.error&&res.data)?res.data:null;
       var tk=data?data.track:null;
       if(tk&&tk.length>1&&_trackSpansTrip(tk,slat,slon,elat,elon)){
@@ -335,7 +339,7 @@ function _ensureTmOverlay(){
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&ov.classList.contains('open'))close(); });
   return ov;
 }
-async function openTripMap(tripId,slat,slon,elat,elon){
+async function openTripMap(tripId,slat,slon,elat,elon,plate){
   const ov=_ensureTmOverlay();
   ov.classList.add('open');
   document.getElementById('tm-title').textContent='Trip #'+tripId+' — route & events';
@@ -356,7 +360,9 @@ async function openTripMap(tripId,slat,slon,elat,elon){
   // Lazy-fetch the track + events for this trip
   let row=null;
   try{
-    const res=await _sb.from('trip_tracks').select('track,events').eq('trip_id',tripId).maybeSingle();
+    let _q=_sb.from('trip_tracks').select('track,events').eq('trip_id',tripId);
+    if(plate)_q=_q.eq('plate',plate); // trip ids can collide across vehicles — scope to this plate
+    const res=await _q.maybeSingle();
     if(!res.error) row=res.data;
   }catch(e){}
 
