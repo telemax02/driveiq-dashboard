@@ -4,6 +4,27 @@
 const SUPA_URL=window.SUPA_URL, SUPA_KEY=window.SUPA_KEY;
 const _sb=supabase.createClient(SUPA_URL,SUPA_KEY);
 var _hashType=(function(){var m=/[#&]type=([a-z_]+)/.exec(location.hash||'');return m?m[1]:'';})();
+// Supabase bounces FAILED sign-in links (expired/already-used invite, recovery,
+// magic-link, or OAuth errors) back here as #error=...&error_code=...&error_description=...
+// (or as ?query params in the PKCE flow). Capture it so the login screen can explain
+// the dead end + offer a fresh link, instead of dumping the user on a raw error URL.
+var _hashErr=(function(){
+  var s=(location.hash||'')+'&'+(location.search||'');
+  if(s.indexOf('error')<0) return null;
+  function g(k){var m=new RegExp('[#&?]'+k+'=([^&]*)').exec(s);return m?decodeURIComponent((m[1]||'').replace(/\+/g,' ')):'';}
+  var code=g('error_code'), e=g('error'); if(!code&&!e) return null;
+  return {code:code,error:e,desc:g('error_description')};
+})();
+function _clearAuthHash(){
+  try{
+    var p=new URLSearchParams(location.search||'');
+    ['error','error_code','error_description'].forEach(function(k){ p.delete(k); });
+    var q=p.toString();
+    history.replaceState(null,'',location.pathname+(q?'?'+q:'')); // drop the #hash + error params, but keep any ?code/?state the SDK still needs
+  }catch(e){}
+  _hashErr=null; // consume once so the boot guard doesn't persist for the whole page session
+}
+var _linkExpiredShown=false; // true while the expired-link screen is showing with no session
 var currentUser=null, currentRole='user';
 let _drCache={};
 function loadDrivers(){ return _drCache; }
@@ -509,11 +530,14 @@ function startApp(){
   setInterval(function(){ loadDashboardData().then(function(){ renderRanking(); }); }, 5*60*1000);
 }
 function showLogin(){
+  // drop any expired-link UI so it can't linger on a later, non-error login
+  ['relink-banner','relink-btn','relink-status'].forEach(function(id){ var n=document.getElementById(id); if(n&&n.parentNode) n.parentNode.removeChild(n); });
   document.getElementById('setpw-view').style.display='none';
   document.getElementById('app-root').style.display='none';
   document.getElementById('login-view').style.display='flex';
 }
 async function showApp(){
+  _linkExpiredShown=false; // leaving the expired-link screen
   var auth=await isAuthorized();
   if(auth==='denied'){ return unauthorizedSignOut(); }
   if(auth==='error'){ return verifyFailed(); }
@@ -589,13 +613,65 @@ async function forgotPassword(){
   var err=document.getElementById('login-err'), msg=document.getElementById('login-msg');
   var email=(document.getElementById('login-email').value||'').trim();
   err.style.display='none'; if(msg) msg.style.display='none';
-  if(!email){ err.textContent='Enter your email above first, then click "Forgot your password?".'; err.style.display='block'; return; }
+  if(!email){ err.textContent='Enter your email above first, then try again.'; err.style.display='block'; return; }
   var link=document.getElementById('forgot-link'), lt=link?link.textContent:'';
   if(link){ link.textContent='Sending…'; link.style.pointerEvents='none'; }
   var r=await _sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
   if(link){ link.textContent=lt; link.style.pointerEvents=''; }
-  if(r&&r.error){ err.textContent=r.error.message||'Could not send the reset email.'; err.style.display='block'; return; }
+  if(r&&r.error&&/rate|too many|429/i.test((r.error.message||'')+' '+(r.error.status||''))){ err.textContent='Too many requests — please wait a minute and try again.'; err.style.display='block'; return; }
+  // any other SDK error falls through to the SAME neutral message so we never reveal whether the account exists
   if(msg){ msg.textContent='If an account exists for '+email+', a password-reset link is on its way — check your inbox.'; msg.style.display='block'; }
+}
+// Friendly handling for an expired/already-used sign-in link: explain it on the login
+// screen and offer a one-click "Email me a new link" (reuses the recovery flow above).
+function showLinkExpired(){
+  _linkExpiredShown=true;
+  showLogin();
+  var form=document.getElementById('login-form');
+  var err=document.getElementById('login-err'), msg=document.getElementById('login-msg');
+  if(msg) msg.style.display='none';
+  if(err) err.style.display='none'; // the banner carries the explanation; keep the red slot for real errors
+  var blob=((_hashErr&&(_hashErr.code+' '+_hashErr.error+' '+_hashErr.desc))||'').toLowerCase();
+  var expired=/expired|otp_expired/.test(blob);
+  if(form && !document.getElementById('relink-banner')){
+    var ban=document.createElement('div');
+    ban.id='relink-banner';
+    ban.style.cssText='background:var(--warning-bg);border:0.5px solid var(--warning);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;color:var(--text);margin-bottom:18px;';
+    ban.innerHTML=expired
+      ? '<b>This link has expired or was already used.</b><br>Enter your email below and we’ll send you a fresh one (valid 24 hours).'
+      : '<b>That sign-in link didn’t work.</b><br>Enter your email below and we’ll send you a new one.';
+    var anchor=form.querySelector('label[for="login-email"]')||form.firstChild; // sit under the brand, above the form
+    form.insertBefore(ban, anchor);
+  }
+  var loginBtn=document.getElementById('login-btn');
+  if(loginBtn && !document.getElementById('relink-btn')){
+    var b=document.createElement('button');
+    b.id='relink-btn'; b.type='button'; b.textContent='Email me a new link';
+    // secondary/outline style so it doesn't compete with the green primary "Sign in" and stays legible in both themes
+    b.style.cssText='width:100%;margin-top:10px;background:transparent;color:var(--info);font-weight:600;font-size:13px;border:1px solid var(--info);border-radius:8px;padding:9px;cursor:pointer;';
+    b.onclick=function(){ requestNewLink(b); };
+    loginBtn.parentNode.insertBefore(b, loginBtn.nextSibling);
+    var st=document.createElement('div'); st.id='relink-status';
+    st.style.cssText='display:none;font-size:12px;line-height:1.4;margin-top:8px;';
+    b.parentNode.insertBefore(st, b.nextSibling); // feedback lands right under the button the user clicked
+  }
+  _clearAuthHash();
+}
+// Self-service "email me a new link" from the expired-link screen. Feedback shows in
+// #relink-status (directly under the button) and flips the banner out of its stale
+// "expired" copy. Always neutral on a backend error, so it never reveals whether the
+// account exists; only genuine rate-limiting is surfaced distinctly.
+async function requestNewLink(btn){
+  var email=(document.getElementById('login-email').value||'').trim();
+  var st=document.getElementById('relink-status'), ban=document.getElementById('relink-banner');
+  function show(txt,col){ if(!st)return; st.textContent=txt; st.style.color=col; st.style.display='block'; }
+  if(!email){ show('Enter your email above first, then tap “Email me a new link”.','var(--danger)'); return; }
+  var t=btn.textContent; btn.disabled=true; btn.textContent='Sending…';
+  var r=null; try{ r=await _sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); }catch(e){ r={error:{message:'network'}}; }
+  btn.disabled=false; btn.textContent=t;
+  if(r&&r.error&&/rate|too many|429/i.test((r.error.message||'')+' '+(r.error.status||''))){ show('Too many requests — please wait a minute, then try again.','var(--danger)'); return; }
+  show('New link sent — check your inbox (it can take a minute, and may land in spam).','var(--success)');
+  if(ban){ ban.style.borderColor='var(--success)'; ban.style.background='var(--success-bg)'; ban.innerHTML='<b>New link on its way.</b><br>Open it on this device to finish signing in.'; }
 }
 async function ssoLogin(provider){
   var err=document.getElementById('login-err'); err.style.display='none';
@@ -805,11 +881,14 @@ async function sendInvite(ev){
 
 _sb.auth.getSession().then(function(res){
   var sess=res&&res.data&&res.data.session;
+  if(_hashErr && !sess){ showLinkExpired(); return; } // failed link (incl. expired recovery/invite) -> friendly banner, before the set-password branch
   if(_hashType==='invite'||_hashType==='recovery'){ showSetPassword(); return; }
+  if(_hashErr){ _clearAuthHash(); showApp(); return; } // _hashErr && sess: already signed in, just scrub the stale error
   if(sess) showApp(); else showLogin();
 });
 _sb.auth.onAuthStateChange(function(event,session){
   if((_hashType==='invite'||_hashType==='recovery') && session){ showSetPassword(); return; }
+  if(_linkExpiredShown && !session){ return; } // keep the expired-link screen up; don't flash a blank login over it
   if(event==='SIGNED_OUT' || !session) showLogin();
 });
 
