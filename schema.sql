@@ -99,11 +99,15 @@ alter table trip_tracks enable row level security;
 alter table fleet_runs  enable row level security;
 alter table latest_run  enable row level security;
 
--- Allow full access via anon key (internal tool — no auth required)
-create policy "allow_all" on vehicles   for all to anon using (true) with check (true);
-create policy "allow_all" on drivers    for all to anon using (true) with check (true);
-create policy "allow_all" on trips      for all to anon using (true) with check (true);
-create policy "allow_all" on incidents  for all to anon using (true) with check (true);
-create policy "allow_all" on trip_tracks for all to anon using (true) with check (true);
-create policy "allow_all" on fleet_runs  for all to anon using (true) with check (true);
-create policy "allow_all" on latest_run  for all to anon using (true) with check (true);
+-- RLS POLICIES: do NOT open these tables to the anon/publishable key. The
+-- invited-only access policies live in (run these AFTER this file, in order):
+--   1. supabase_auth_setup.sql      (profiles, is_admin, profiles RLS)
+--   2. supabase_rls_lockdown.sql    (allowed_emails, is_invited, read_invited on every data table)
+--   3. supabase_user_logins.sql     (user_logins table + admin-read policy)
+-- With RLS enabled above and NO policy added here, every table is locked by
+-- default (deny-all) until the lockdown script adds the invited-only read policies.
+--
+-- WARNING: an "allow_all to anon ... using(true) with check(true)" policy used to
+-- live here and was removed 17 Jun 2026. Do NOT re-add it: the publishable key is
+-- shipped in the client, so that would grant the public full read+write to all
+-- fleet data. supabase_rls_lockdown.sql is the single source of truth for policies.

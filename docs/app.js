@@ -84,7 +84,7 @@ function renderRanking(){
       ?'<i class="ti ti-minus" style="font-size:13px;color:var(--text3);" title="Stable"></i>'
       :'';
     var drD=loadDrivers()[v.plate]||{};
-    var dName=((drD.first||'').trim()+' '+((drD.last||'').trim()?(drD.last||'').trim().toUpperCase()+'.':'')).trim();
+    var dName=esc(((drD.first||'').trim()+' '+((drD.last||'').trim()?(drD.last||'').trim().toUpperCase()+'.':'')).trim());
     row.innerHTML=badge+
       '<div style="flex:1;min-width:0;">'+
         '<div style="display:flex;align-items:center;gap:5px;margin-bottom:1px;">'+
@@ -110,7 +110,7 @@ function selectV(plate){
   sel=plate;renderRanking();
   const v=vehicles.find(function(x){return x.plate===plate;});
   var _drD=loadDrivers()[plate]||{};
-  var drName=((_drD.first||'').trim()+' '+((_drD.last||'').trim()?(_drD.last||'').trim().toUpperCase()+'.':'')).trim();
+  var drName=esc(((_drD.first||'').trim()+' '+((_drD.last||'').trim()?(_drD.last||'').trim().toUpperCase()+'.':'')).trim());
   function ageTag(a){
     var m={'Under 25':['#c084fc','rgba(139,92,246,0.18)'],'25–34':['var(--info)','var(--info-bg)'],'35–44':['#5eead4','rgba(20,184,166,0.15)'],'45–54':['var(--warning)','var(--warning-bg)'],'55–64':['var(--success)','var(--success-bg)'],'65+':['#f87171','var(--danger-bg)']};
     var c=m[a];
@@ -177,7 +177,7 @@ function selectV(plate){
       +(v.avg>=100?'<span style="font-size:14px;margin-right:3px;">🏆</span>':v.avg>=90?'<span style="font-size:14px;margin-right:3px;">💎</span>':'')
       +'<span style="font-size:20px;font-weight:500;color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</span>'
     +'</div>'
-    +(v.summary?'<p style="font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:10px;">'+v.summary+'</p>':'')
+    +(v.summary?'<p style="font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:10px;">'+esc(v.summary)+'</p>':'')
     +predText
   +'</div>';
 
@@ -818,7 +818,7 @@ function changeWeek(dir){
 
 function renderLeaderboard(){
   var drData=loadDrivers();
-  function drName(plate){ var d=drData[plate]||{}; var f=(d.first||'').trim(),l=(d.last||'').trim().toUpperCase(); return f||l?(f+(l?(' '+l+'.'):'')):''; }
+  function drName(plate){ var d=drData[plate]||{}; var f=(d.first||'').trim(),l=(d.last||'').trim().toUpperCase(); return f||l?esc(f+(l?(' '+l+'.'):'')):''; }
   function drAge(plate){ return (drData[plate]||{}).age||''; }
   function ageTag(a){
     var m={
@@ -928,11 +928,11 @@ function renderDrivers(){
     row.dataset.plate = v.plate;
     row.innerHTML =
       '<div class="dr-id"><div class="p">'+v.plate+'</div><div class="m">'+v.make+'</div></div>'
-      +'<input type="text" id="dr-first-'+pid+'" value="'+(d.first||'')+'" placeholder="First name">'
-      +'<input type="text" id="dr-last-'+pid+'" value="'+(d.last||'')+'" placeholder="A" maxlength="1" style="text-transform:uppercase;text-align:center;">'
+      +'<input type="text" id="dr-first-'+pid+'" value="'+esc(d.first||'')+'" placeholder="First name">'
+      +'<input type="text" id="dr-last-'+pid+'" value="'+esc(d.last||'')+'" placeholder="A" maxlength="1" style="text-transform:uppercase;text-align:center;">'
       +'<select id="dr-age-'+pid+'"><option value="">&#8212;</option>'+ageOpts+'</select>'
       +'<select id="dr-sex-'+pid+'"><option value="">&#8212;</option>'+sexOpts+'</select>'
-      +'<input type="email" id="dr-email-'+pid+'" value="'+(d.email||'')+'" placeholder="driver@example.com">'
+      +'<input type="email" id="dr-email-'+pid+'" value="'+esc(d.email||'')+'" placeholder="driver@example.com">'
       +'<div class="sc" style="color:'+sc(v.avg)+';">'+fmt1(v.avg)+'</div>';
     grid.appendChild(row);
     var plateRef = v.plate;
@@ -1029,7 +1029,13 @@ function importDrivers(evt){
   reader.onload = async function(e){
     try{
       var data=JSON.parse(e.target.result);
-      var rows=Object.entries(data).map(function(kv){ return {plate:kv[0],first_name:kv[1].first||'',last_initial:kv[1].last||'',age:kv[1].age||'',sex:kv[1].sex||'',email:kv[1].email||''}; });
+      // sanitise imported values: strip markup chars, cap length, validate email
+      var _clean=function(s){ return String(s==null?'':s).replace(/[<>"]/g,'').slice(0,60); };
+      var rows=Object.entries(data).map(function(kv){
+        var val=kv[1]||{};
+        return {plate:_clean(kv[0]), first_name:_clean(val.first), last_initial:_clean(val.last).slice(0,1).toUpperCase(),
+                age:_clean(val.age), sex:_clean(val.sex), email:(isValidEmail(val.email)?_clean(val.email):'')};
+      });
       await _sb.from('drivers').upsert(rows);
       _drCache=data;
       renderDrivers();
