@@ -49,6 +49,12 @@ function cv(val){return val===null||val===undefined?'<span style="color:var(--te
 let vehicles=[];
 let incData=[];
 let weeksData=[];
+// ── Companies (multi-tenant) ──
+// _companies: all companies the signed-in user can see. _activeCompany: the one
+// currently shown. Both stay null/empty when the companies table doesn't exist
+// yet (pre-migration) or the user isn't invited — the app then behaves as before.
+let _companies=[];
+let _activeCompany=null;
 
 // ── Tab switching ──────────────────────────────────────────────────────────
 function switchTab(tab){
@@ -65,7 +71,7 @@ function switchTab(tab){
   if(tab==='lb') renderLeaderboard();
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
-  if(tab==='admin') loadAdminUsers();
+  if(tab==='admin'){ loadAdminUsers(); loadCompaniesAdmin(); }
   if(tab==='faq') setupFaqAccordion();
 }
 
@@ -91,6 +97,7 @@ function setupFaqAccordion(){
 // ── Dashboard ─────────────────────────────────────────────────────────────
 let sel=null;
 function renderRanking(){
+  if(_activeCompany && !_activeCompany.is_default){ renderCompanyEmpty(); return; }
   const el=document.getElementById('ranking');el.innerHTML='';
   const M=['🥇','🥈','🥉'];
   vehicles.forEach(function(v,i){
@@ -494,6 +501,13 @@ function renderFleetInsight(fi){
 
 var _lastUpdatedAt=null;
 async function loadDashboardData(){
+  // Only the default company has a scored snapshot today. Other companies store
+  // their fleet but aren't wired into the pipeline yet — show an awaiting-data
+  // state (rendered by renderRanking) instead of the default fleet's numbers.
+  if(_activeCompany && !_activeCompany.is_default){
+    vehicles=[]; incData=[]; weeksData=[]; _lastUpdatedAt=null;
+    return;
+  }
   var res=await _sb.from('latest_run').select('data, updated_at').eq('id',1).single();
   if(res.error||!res.data){ console.error('Failed to load data',res.error); return; }
   if(_lastUpdatedAt&&res.data.updated_at===_lastUpdatedAt) return;
@@ -526,7 +540,10 @@ async function loadDashboardData(){
 var _appStarted=false;
 function startApp(){
   if(_appStarted) return; _appStarted=true;
-  Promise.all([initDrivers(),loadDashboardData()]).then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
+  // Companies must resolve first so loadDashboardData knows which fleet to show.
+  initCompanies().then(function(){
+    return Promise.all([initDrivers(),loadDashboardData()]);
+  }).then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
   setInterval(function(){ loadDashboardData().then(function(){ renderRanking(); }); }, 5*60*1000);
 }
 function showLogin(){
@@ -1133,4 +1150,112 @@ function importDrivers(evt){
   };
   reader.readAsText(file);
   evt.target.value = '';
+}
+
+// ── Companies (multi-tenant foundation) ─────────────────────────────────────
+// Load the companies list and pick the active one (saved choice → default →
+// first). Fails soft: if the table doesn't exist yet or the read errors, the
+// app keeps working as a single fleet.
+async function initCompanies(){
+  try{
+    var res=await _sb.from('companies').select('*').order('is_default',{ascending:false}).order('name');
+    _companies=(res&&res.data)||[];
+  }catch(e){ _companies=[]; }
+  var saved=null; try{ saved=localStorage.getItem('diq_company'); }catch(e){}
+  _activeCompany = _companies.find(function(c){return c.slug===saved;})
+                || _companies.find(function(c){return c.is_default;})
+                || _companies[0] || null;
+  renderCompanySwitch();
+}
+function renderCompanySwitch(){
+  var el=document.getElementById('company-switch'); if(!el) return;
+  if(!_companies.length){ el.style.display='none'; return; }
+  el.style.display='';
+  el.innerHTML=_companies.map(function(c){
+    return '<option value="'+esc(c.slug)+'"'+(_activeCompany&&c.slug===_activeCompany.slug?' selected':'')+'>'+esc(c.name)+'</option>';
+  }).join('');
+}
+function switchCompany(slug){
+  var c=_companies.find(function(x){return x.slug===slug;}); if(!c) return;
+  _activeCompany=c; sel=null;
+  try{ localStorage.setItem('diq_company',slug); }catch(e){}
+  _lastUpdatedAt=null; // force a fresh load for the newly selected company
+  loadDashboardData().then(function(){
+    renderRanking();
+    if(vehicles.length>0) selectV(vehicles[0].plate);
+  });
+}
+// Shown when a non-default company (no scored data yet) is selected.
+function renderCompanyEmpty(){
+  var nm=_activeCompany?esc(_activeCompany.name):'this company';
+  var r=document.getElementById('ranking');
+  if(r) r.innerHTML='<div class="empty" style="text-align:left;line-height:1.6;">'
+    +'<i class="ti ti-clock-hour-4" style="font-size:18px;display:block;margin-bottom:8px;"></i>'
+    +'No trips scored yet for <b>'+nm+'</b>.<br>'
+    +'<span style="font-size:11px;color:var(--text3);">This company\'s telematics feed isn\'t connected to scoring yet.</span></div>';
+  var a=document.getElementById('s-avg'); if(a) a.textContent='—';
+  var st=document.getElementById('s-stars'); if(st) st.innerHTML='';
+  var tp=document.getElementById('s-trips'); if(tp) tp.textContent='';
+  var tb=document.getElementById('tier-breakdown'); if(tb) tb.innerHTML='';
+  var tl=document.getElementById('trip-label'); if(tl) tl.textContent='Select a vehicle';
+  var vs=document.getElementById('vehicle-summary'); if(vs) vs.innerHTML='';
+  var tr=document.getElementById('trips'); if(tr) tr.innerHTML='<div class="empty">No data for this company yet.</div>';
+}
+
+// ── Admin: company management (mirrors the driver in-browser CRUD) ───────────
+function _coMsg(text,color){ var m=document.getElementById('co-msg'); if(!m) return; m.textContent=text; m.style.color=color||'var(--text2)'; m.style.display='block'; }
+async function loadCompaniesAdmin(){
+  try{
+    var res=await _sb.from('companies').select('*').order('is_default',{ascending:false}).order('name');
+    if(res&&res.data) _companies=res.data;
+  }catch(e){}
+  renderCompanySwitch();
+  renderCompaniesAdmin();
+}
+function renderCompaniesAdmin(){
+  var el=document.getElementById('admin-companies'); if(!el) return;
+  if(!_companies.length){ el.innerHTML='<div class="empty">No companies yet. Add one above.</div>'; return; }
+  el.innerHTML=_companies.map(function(c){
+    var devs=Array.isArray(c.flespi_device_ids)?c.flespi_device_ids.length:0;
+    var badge=c.is_default?'<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:var(--info-bg);color:var(--info);margin-left:6px;vertical-align:1px;">DEFAULT</span>':'';
+    var del=c.is_default?'':'<button onclick="deleteCompany(\''+esc(c.id)+'\')" title="Remove company" aria-label="Remove company" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--danger);border-radius:6px;padding:5px 9px;font-size:13px;cursor:pointer;"><i class="ti ti-trash"></i></button>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;margin-bottom:6px;">'
+      +'<div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--text);">'+esc(c.name)+badge+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+devs+' device'+(devs===1?'':'s')+(c.flespi_calc_id?(' · calc '+esc(c.flespi_calc_id)):'')+' · '+esc(c.slug)+'</div></div>'
+      +del+'</div>';
+  }).join('');
+}
+async function addCompany(ev){
+  if(ev&&ev.preventDefault) ev.preventDefault();
+  var nameEl=document.getElementById('co-name'), devEl=document.getElementById('co-devs'),
+      calcEl=document.getElementById('co-calc'), colEl=document.getElementById('co-color');
+  var name=((nameEl&&nameEl.value)||'').trim();
+  if(!name){ _coMsg('Company name is required.','var(--danger)'); return; }
+  var slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  if(!slug){ _coMsg('Please use letters or numbers in the name.','var(--danger)'); return; }
+  if(_companies.some(function(c){return c.slug===slug;})){ _coMsg('A company with a similar name already exists.','var(--danger)'); return; }
+  var devs=((devEl&&devEl.value)||'').split(/[\s,]+/).map(function(s){return s.trim();}).filter(Boolean);
+  var payload={slug:slug,name:name,flespi_device_ids:devs,
+    flespi_calc_id:((calcEl&&calcEl.value)||'').trim(),color:((colEl&&colEl.value)||'').trim()};
+  var res=await _sb.from('companies').insert(payload);
+  if(res&&res.error){ _coMsg('Could not add company: '+esc(res.error.message),'var(--danger)'); return; }
+  if(nameEl) nameEl.value=''; if(devEl) devEl.value=''; if(calcEl) calcEl.value=''; if(colEl) colEl.value='';
+  _coMsg('Company “'+name+'” added.','var(--success)');
+  await loadCompaniesAdmin();
+}
+async function deleteCompany(id){
+  var c=_companies.find(function(x){return x.id===id;});
+  if(!c || c.is_default) return;
+  if(!confirm('Remove company “'+c.name+'”? Its saved settings will be deleted.')) return;
+  var res=await _sb.from('companies').delete().eq('id',id);
+  if(res&&res.error){ _coMsg('Could not remove company: '+esc(res.error.message),'var(--danger)'); return; }
+  var wasActive=_activeCompany&&_activeCompany.id===id;
+  if(wasActive){ _activeCompany=null; try{ localStorage.removeItem('diq_company'); }catch(e){} }
+  await loadCompaniesAdmin();
+  if(wasActive){
+    _activeCompany=_companies.find(function(x){return x.is_default;})||_companies[0]||null;
+    renderCompanySwitch();
+    _lastUpdatedAt=null;
+    loadDashboardData().then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
+  }
 }
