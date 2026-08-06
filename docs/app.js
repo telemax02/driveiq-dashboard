@@ -1217,18 +1217,23 @@ function renderCompaniesAdmin(){
   if(!_companies.length){ el.innerHTML='<div class="empty">No companies yet. Add one above.</div>'; return; }
   el.innerHTML=_companies.map(function(c){
     var devs=Array.isArray(c.flespi_device_ids)?c.flespi_device_ids.length:0;
+    // Fleet description: group + model when defined that way, else an explicit device count.
+    var fleet = c.flespi_group_id
+      ? ('group '+esc(c.flespi_group_id)+(c.device_type?(' · '+esc(c.device_type)):''))
+      : (devs+' device'+(devs===1?'':'s'));
     var badge=c.is_default?'<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:var(--info-bg);color:var(--info);margin-left:6px;vertical-align:1px;">DEFAULT</span>':'';
     var del=c.is_default?'':'<button onclick="deleteCompany(\''+esc(c.id)+'\')" title="Remove company" aria-label="Remove company" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--danger);border-radius:6px;padding:5px 9px;font-size:13px;cursor:pointer;"><i class="ti ti-trash"></i></button>';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;margin-bottom:6px;">'
       +'<div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--text);">'+esc(c.name)+badge+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+devs+' device'+(devs===1?'':'s')+(c.flespi_calc_id?(' · calc '+esc(c.flespi_calc_id)):'')+' · '+esc(c.slug)+'</div></div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+fleet+(c.flespi_calc_id?(' · calc '+esc(c.flespi_calc_id)):'')+' · '+esc(c.slug)+'</div></div>'
       +del+'</div>';
   }).join('');
 }
 async function addCompany(ev){
   if(ev&&ev.preventDefault) ev.preventDefault();
   var nameEl=document.getElementById('co-name'), devEl=document.getElementById('co-devs'),
-      calcEl=document.getElementById('co-calc'), colEl=document.getElementById('co-color');
+      calcEl=document.getElementById('co-calc'), colEl=document.getElementById('co-color'),
+      grpEl=document.getElementById('co-group'), typeEl=document.getElementById('co-type');
   var name=((nameEl&&nameEl.value)||'').trim();
   if(!name){ _coMsg('Company name is required.','var(--danger)'); return; }
   var slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
@@ -1236,10 +1241,11 @@ async function addCompany(ev){
   if(_companies.some(function(c){return c.slug===slug;})){ _coMsg('A company with a similar name already exists.','var(--danger)'); return; }
   var devs=((devEl&&devEl.value)||'').split(/[\s,]+/).map(function(s){return s.trim();}).filter(Boolean);
   var payload={slug:slug,name:name,flespi_device_ids:devs,
+    flespi_group_id:((grpEl&&grpEl.value)||'').trim(),device_type:((typeEl&&typeEl.value)||'').trim().toLowerCase(),
     flespi_calc_id:((calcEl&&calcEl.value)||'').trim(),color:((colEl&&colEl.value)||'').trim()};
   var res=await _sb.from('companies').insert(payload);
   if(res&&res.error){ _coMsg('Could not add company: '+esc(res.error.message),'var(--danger)'); return; }
-  if(nameEl) nameEl.value=''; if(devEl) devEl.value=''; if(calcEl) calcEl.value=''; if(colEl) colEl.value='';
+  [nameEl,devEl,calcEl,colEl,grpEl,typeEl].forEach(function(el){ if(el) el.value=''; });
   _coMsg('Company “'+name+'” added.','var(--success)');
   await loadCompaniesAdmin();
 }
