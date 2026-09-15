@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
       <button class="tab" id="tab-admin" onclick="switchTab('admin')" style="display:none;"><i class="ti ti-shield-lock" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Admin</button>
     </div>
     <div style="flex:1;display:flex;justify-content:flex-end;align-items:center;gap:20px;">
+      <select id="company-switch" onchange="switchCompany(this.value)" title="Select company" aria-label="Select company" style="display:none;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-weight:600;padding:7px 10px;outline:none;cursor:pointer;max-width:200px;"></select>
       <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Scored trips</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-trips">—</div></div>
       <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Last updated</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-updated">—</div></div>
       <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark theme" aria-label="Toggle theme"><i class="ti ti-sun"></i></button>
@@ -249,6 +250,24 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
     </div>
     <div class="slabel">Users</div>
     <div id="admin-users" style="max-width:560px;"></div>
+
+    <div class="slabel" style="margin-top:26px;">Companies</div>
+    <div class="stat" style="margin-bottom:16px;max-width:560px;">
+      <div class="lbl" style="margin-bottom:9px;">Add a company</div>
+      <form id="company-form" onsubmit="addCompany(event)" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:2;min-width:150px;"><label class="inv-l" for="co-name">Company name</label><input id="co-name" type="text" placeholder="Acme Rentals" class="inv-i"></div>
+        <div style="flex:1;min-width:120px;"><label class="inv-l" for="co-group">Flespi group ID</label><input id="co-group" type="text" placeholder="e.g. 586084" class="inv-i"></div>
+        <div style="flex:1;min-width:104px;"><label class="inv-l" for="co-type">Device model</label><input id="co-type" type="text" placeholder="e.g. fmc003" class="inv-i"></div>
+        <div style="flex:2;min-width:150px;"><label class="inv-l" for="co-devs">Or device IDs</label><input id="co-devs" type="text" placeholder="6536476, 6605289" class="inv-i"></div>
+        <div style="flex:1;min-width:96px;"><label class="inv-l" for="co-calc">Calc ID</label><input id="co-calc" type="text" placeholder="optional" class="inv-i"></div>
+        <div style="min-width:74px;"><label class="inv-l" for="co-color">Colour</label><input id="co-color" type="text" placeholder="#7cb83e" class="inv-i"></div>
+        <button id="co-btn" type="submit" style="background:#7cb83e;color:#13260b;font-weight:700;font-size:13px;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;white-space:nowrap;">Add company</button>
+      </form>
+      <div id="co-msg" style="font-size:12px;margin-top:9px;display:none;"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:9px;line-height:1.5;">Define a company's fleet by a <b>Flespi group + device model</b> (auto-syncs as devices change) or by an explicit list of <b>device IDs</b>. Per-company trip scoring is connected as a follow-up &mdash; a new company appears in the switcher and stores its fleet now, showing live data once its feed is wired in.</div>
+    </div>
+    <div class="slabel">All companies</div>
+    <div id="admin-companies" style="max-width:560px;"></div>
   </div>
 </div>
 
