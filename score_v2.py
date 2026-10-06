@@ -61,7 +61,11 @@ def score_fleet(calc, devs, makes):
     veh=[]; inc=[]
     for did,(pl,ints) in raw_intervals.items():
         trips=[score_trip(t,FLEET_MEAN) for t in ints]
-        trips=[t for t in trips if t is not None]
+        # Only keep "full-data" trips: speeding must have been measurable (spd is
+        # not None, i.e. road speed-limit coverage >= 30s), so all four behaviours
+        # are scored. Excludes un-enriched trips that would otherwise read a
+        # misleading perfect 100.
+        trips=[t for t in trips if t is not None and t.get('spd') is not None]
         if not trips: continue
         km_total=sum(t['km'] for t in trips)
         avg=round(sum(t['total']*t['km'] for t in trips)/km_total) if km_total>0 else 0
