@@ -97,7 +97,7 @@ function setupFaqAccordion(){
 // ── Dashboard ─────────────────────────────────────────────────────────────
 let sel=null;
 function renderRanking(){
-  if(_activeCompany && !_activeCompany.is_default){ renderCompanyEmpty(); return; }
+  if(!vehicles.length){ renderCompanyEmpty(); return; }
   const el=document.getElementById('ranking');el.innerHTML='';
   const M=['🥇','🥈','🥉'];
   vehicles.forEach(function(v,i){
@@ -499,19 +499,23 @@ function renderFleetInsight(fi){
 
 
 
-var _lastUpdatedAt=null;
+var _lastUpdatedAt=null, _lastSlug=null;
 async function loadDashboardData(){
-  // Only the default company has a scored snapshot today. Other companies store
-  // their fleet but aren't wired into the pipeline yet — show an awaiting-data
-  // state (rendered by renderRanking) instead of the default fleet's numbers.
-  if(_activeCompany && !_activeCompany.is_default){
-    vehicles=[]; incData=[]; weeksData=[]; _lastUpdatedAt=null;
-    return;
+  // Each company has its own scored snapshot in company_runs (keyed by slug);
+  // the default company falls back to 'telemax'. A company with no snapshot yet
+  // shows the awaiting-data state (rendered by renderRanking).
+  var slug=(_activeCompany&&_activeCompany.slug)?_activeCompany.slug:'telemax';
+  var res=await _sb.from('company_runs').select('data, updated_at').eq('company_slug',slug).maybeSingle();
+  // Telemax safety net: if company_runs isn't populated yet (pre-migration),
+  // fall back to the legacy single-tenant latest_run so the dashboard never breaks.
+  if((res.error||!res.data) && slug==='telemax'){
+    var lr=await _sb.from('latest_run').select('data, updated_at').eq('id',1).maybeSingle();
+    if(lr&&lr.data) res=lr;
   }
-  var res=await _sb.from('latest_run').select('data, updated_at').eq('id',1).single();
-  if(res.error||!res.data){ console.error('Failed to load data',res.error); return; }
-  if(_lastUpdatedAt&&res.data.updated_at===_lastUpdatedAt) return;
-  _lastUpdatedAt=res.data.updated_at;
+  if(res.error&&!res.data){ console.error('Failed to load data',res.error); return; }
+  if(!res.data){ vehicles=[]; incData=[]; weeksData=[]; _lastUpdatedAt=null; _lastSlug=slug; return; }
+  if(_lastUpdatedAt&&res.data.updated_at===_lastUpdatedAt&&_lastSlug===slug) return;
+  _lastUpdatedAt=res.data.updated_at; _lastSlug=slug;
   var d=res.data.data;
   vehicles=d.vehicles||[];
   incData=d.incidents||[];

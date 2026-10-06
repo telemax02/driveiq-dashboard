@@ -3,10 +3,13 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 TOKEN = os.environ['FLESPI_TOKEN']
-CALC  = os.environ.get('FLESPI_CALC_ID', '2923614')
+# Telemax's scoring calc (the original single-tenant default). Other companies
+# carry their own calc id in the Supabase `companies` table.
+TELEMAX_CALC = os.environ.get('FLESPI_CALC_ID', '2923614')
 BNE=36000
 # Data window starts 2 Jun 2026 00:00 AEST
 TODAY = int((datetime.datetime(2026, 6, 2) - datetime.datetime(1970, 1, 1)).total_seconds()) - BNE
+# Telemax fleet (curated plate/make map — keeps Telemax output identical).
 DEVS={6536476:'856KZ4',6605289:'387BX3',6605473:'627KB5',6613713:'136YSI',6711239:'570RSO',6884310:'534JDZ',6884322:'934NQ4',6884325:'WHOOP',7419562:'476NP5',7585062:'344IT2',7734421:'VolvoXC60',7734429:'873BX8',8180103:'498IO7'}
 MAKES={'856KZ4':'Toyota Hilux','387BX3':'GWM Cannon','627KB5':'BYD Seal','136YSI':'Hyundai Elantra','570RSO':'Subaru Forester','534JDZ':'Honda Jazz','934NQ4':'Ford Ranger','WHOOP':'Ford Ranger','476NP5':'Nissan Murano','344IT2':'Ford Ranger','VolvoXC60':'Volvo XC60','873BX8':'Hyundai i30','498IO7':'Toyota Corolla'}
 
@@ -40,46 +43,98 @@ def score_trip(t, fleet_mean):
             'slat':sl.get('position.latitude'),'slon':sl.get('position.longitude'),
             'elat':el.get('position.latitude'),'elon':el.get('position.longitude'),'from':'','to':''}
 
-def fetch(d):
-    req=urllib.request.Request(f'https://flespi.io/gw/calcs/{CALC}/devices/{d}/intervals/all',
+def fetch(calc, d):
+    req=urllib.request.Request(f'https://flespi.io/gw/calcs/{calc}/devices/{d}/intervals/all',
         data=json.dumps({'count':200,'reverse':True}).encode(),
         headers={'Authorization':f'FlespiToken {TOKEN}','Content-Type':'application/json'},method='GET')
     with urllib.request.urlopen(req,timeout=12) as r: return json.load(r).get('result',[])
 
-raw_trips=[]; raw_intervals={}
-for did,pl in DEVS.items():
-    ints=[t for t in fetch(did) if t.get('begin',0)>=TODAY and t.get('mileage_km',0)>=3.0 and t.get('moving_time_s',0)>=240]
-    raw_intervals[did]=(pl,ints)
-    for t in ints:
-        m=t.get('moving_time_s',1) or 1; dur=t.get('duration',m)
-        if dur<=m*5: raw_trips.append(t.get('mileage_km',0))
-
 FLEET_MEAN=88
-veh=[]; inc=[]
-for did,(pl,ints) in raw_intervals.items():
-    trips=[score_trip(t,FLEET_MEAN) for t in ints]
-    trips=[t for t in trips if t is not None]
-    if not trips: continue
-    km_total=sum(t['km'] for t in trips)
-    avg=round(sum(t['total']*t['km'] for t in trips)/km_total) if km_total>0 else 0
-    cov_trips=[t for t in trips if t['cov_pct']>0]
-    avg_cov=round(sum(t['cov_pct'] for t in cov_trips)/len(cov_trips)) if cov_trips else 0
-    low_cov=avg_cov<60 and len(cov_trips)>0
-    veh.append({'plate':pl,'make':MAKES[pl],'avg':avg,'inc':any(t['incident'] for t in trips),
-                'avg_cov':avg_cov,'low_cov':low_cov,'trips':trips})
-    [inc.append({'plate':pl,'make':MAKES[pl],'trip':f'#{t["id"]}','time':t['t'],'date':t['date'],
-                 'mx':t['inc_mx'],'dur':t['inc_dur'],'avg':t['inc_avg'],
-                 'begin_ts':t['begin_ts'],'end_ts':t['end_ts'],'dev_id':did,
-                 'datetime':'','speed':'','loc':'','coords':[]})
-     for t in trips if t['incident']]
 
-veh.sort(key=lambda x:x['avg'],reverse=True); inc.sort(key=lambda x:x['mx'],reverse=True)
-fa=round(sum(v['avg'] for v in veh)/len(veh)) if veh else 0
-out={'vehicles':veh,'incidents':inc,'fleet_avg':fa,'total_trips':sum(len(v['trips']) for v in veh),
-     'generated':datetime.datetime.utcnow().strftime('%d %b %Y %H:%M UTC'),'num_vehicles':13}
-import os as _os
-_out_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'scores_only.json')
-with open(_out_path,'w') as f: json.dump(out,f)
-print(f'{len(veh)} vehicles, {out["total_trips"]} trips, {len(inc)} incidents, avg {fa}')
-for v in veh:
-    print(f'  {v["plate"]:10} {v["avg"]:3} {"INC" if v["inc"] else "   "} {len(v["trips"])}t  cov:{v["avg_cov"]}%{"LOW" if v["low_cov"] else ""}')
+def score_fleet(calc, devs, makes):
+    """Score one company's fleet. Identical logic to the original single-tenant
+    pipeline, parameterised by calc id + device/plate/make maps."""
+    raw_intervals={}
+    for did,pl in devs.items():
+        ints=[t for t in fetch(calc,did) if t.get('begin',0)>=TODAY and t.get('mileage_km',0)>=3.0 and t.get('moving_time_s',0)>=240]
+        raw_intervals[did]=(pl,ints)
+    veh=[]; inc=[]
+    for did,(pl,ints) in raw_intervals.items():
+        trips=[score_trip(t,FLEET_MEAN) for t in ints]
+        trips=[t for t in trips if t is not None]
+        if not trips: continue
+        km_total=sum(t['km'] for t in trips)
+        avg=round(sum(t['total']*t['km'] for t in trips)/km_total) if km_total>0 else 0
+        cov_trips=[t for t in trips if t['cov_pct']>0]
+        avg_cov=round(sum(t['cov_pct'] for t in cov_trips)/len(cov_trips)) if cov_trips else 0
+        low_cov=avg_cov<60 and len(cov_trips)>0
+        veh.append({'plate':pl,'make':makes.get(pl,''),'avg':avg,'inc':any(t['incident'] for t in trips),
+                    'avg_cov':avg_cov,'low_cov':low_cov,'trips':trips})
+        [inc.append({'plate':pl,'make':makes.get(pl,''),'trip':f'#{t["id"]}','time':t['t'],'date':t['date'],
+                     'mx':t['inc_mx'],'dur':t['inc_dur'],'avg':t['inc_avg'],
+                     'begin_ts':t['begin_ts'],'end_ts':t['end_ts'],'dev_id':did,
+                     'datetime':'','speed':'','loc':'','coords':[]})
+         for t in trips if t['incident']]
+    veh.sort(key=lambda x:x['avg'],reverse=True); inc.sort(key=lambda x:x['mx'],reverse=True)
+    fa=round(sum(v['avg'] for v in veh)/len(veh)) if veh else 0
+    return {'vehicles':veh,'incidents':inc,'fleet_avg':fa,'total_trips':sum(len(v['trips']) for v in veh),
+            'generated':datetime.datetime.utcnow().strftime('%d %b %Y %H:%M UTC'),'num_vehicles':len(veh)}
+
+# ── Company roster ──────────────────────────────────────────────────────────
+# Telemax uses its curated DEVS/MAKES; every other company is read from the
+# Supabase `companies` table and its devices are taken from its Flespi calc's
+# own device assignment (source of truth), with plate = device name.
+def _supa_get(path):
+    url = os.environ['SUPABASE_URL'].rstrip('/') + '/rest/v1/' + path
+    key = os.environ.get('SUPABASE_SECRET_KEY') or os.environ['SUPABASE_KEY']
+    req = urllib.request.Request(url, headers={'apikey':key, 'Authorization':f'Bearer {key}'})
+    with urllib.request.urlopen(req, timeout=20) as r: return json.load(r)
+
+def _flespi_get(path):
+    req = urllib.request.Request('https://flespi.io'+path, headers={'Authorization':f'FlespiToken {TOKEN}'})
+    with urllib.request.urlopen(req, timeout=40) as r: return json.load(r).get('result', [])
+
+def _devices_for_calc(calc):
+    """Return (devs, makes) for a calc from its assigned devices (plate = device name)."""
+    ids = [x['device_id'] for x in _flespi_get(f'/gw/calcs/{calc}/devices/all')]
+    devs={}; makes={}
+    for i in range(0, len(ids), 150):
+        sel = ','.join(str(x) for x in ids[i:i+150])
+        for d in _flespi_get(f'/gw/devices/{sel}?fields=id,name'):
+            plate = d.get('name') or str(d['id'])
+            devs[d['id']] = plate; makes[plate] = ''
+    return devs, makes
+
+def load_companies():
+    companies = [('telemax', TELEMAX_CALC, DEVS, MAKES)]
+    try:
+        rows = _supa_get('companies?select=slug,flespi_calc_id,is_default')
+    except Exception as e:
+        print(f'  (companies table unavailable: {e}; scoring Telemax only)')
+        rows = []
+    for r in rows:
+        slug = r.get('slug'); calc = (r.get('flespi_calc_id') or '').strip()
+        if slug == 'telemax' or not calc:
+            continue
+        try:
+            devs, makes = _devices_for_calc(calc)
+        except Exception as e:
+            print(f'  (skip {slug}: could not load calc {calc} devices: {e})'); continue
+        if devs:
+            companies.append((slug, calc, devs, makes))
+    return companies
+
+# ── Run all companies ───────────────────────────────────────────────────────
+BASE = os.path.dirname(os.path.abspath(__file__))
+scores_all = {}
+for slug, calc, devs, makes in load_companies():
+    out = score_fleet(calc, devs, makes)
+    scores_all[slug] = out
+    print(f'[{slug}] {len(out["vehicles"])} vehicles, {out["total_trips"]} trips, '
+          f'{len(out["incidents"])} incidents, avg {out["fleet_avg"]} (calc {calc})')
+
+with open(os.path.join(BASE, 'scores_all.json'), 'w') as f:
+    json.dump(scores_all, f)
+# Back-compat: keep scores_only.json = Telemax for build_html.py / trip_tracks.py
+with open(os.path.join(BASE, 'scores_only.json'), 'w') as f:
+    json.dump(scores_all.get('telemax', {'vehicles':[],'incidents':[],'fleet_avg':0,'total_trips':0,'num_vehicles':0}), f)

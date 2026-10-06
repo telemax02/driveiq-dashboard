@@ -360,8 +360,78 @@ def sync(scores_path):
     print(f'  latest_run: updated')
 
 
+# ── Per-company dashboard snapshots (company_runs) ──────────────────────────
+# Builds the same `data` blob the dashboard reads, but one per company, written
+# to the additive company_runs table (keyed by company_slug). Does NOT touch the
+# single-tenant latest_run table, so the live Telemax pipeline stays unchanged.
+def build_run_data(slug, out, base_dir):
+    vehicles = out.get('vehicles', [])
+    weeks = _compute_weeks(vehicles)
+    date_range = _date_range(vehicles)
+    _vavgs = [_precise_avg(v) for v in vehicles]
+    fleet_avg_1dp = round(sum(_vavgs) / len(_vavgs), 1) if _vavgs else out.get('fleet_avg', 0)
+
+    # Fleet-insight panel: component stars + trip mix + risk are computed live from
+    # this company's own vehicles. The AI prose/per-vehicle summaries are Telemax-only
+    # (that's whose weekly cache exists), so attach them only for telemax.
+    veh_summaries = {}
+    summary = None; week_of = None
+    fi_path = os.path.join(base_dir, 'fleet_insight_cache.json')
+    if slug == 'telemax' and os.path.exists(fi_path):
+        fi = json.load(open(fi_path))
+        veh_summaries = fi.get('vehicles') or {}
+        summary = fi.get('summary'); week_of = fi.get('week_of')
+
+    fleet_insight = None
+    if vehicles:
+        comps = _fleet_components(vehicles); mix = _trip_mix(vehicles)
+        live_risk, _ = _risk(fleet_avg_1dp)
+        fleet_insight = {
+            'spd': comps['spd'], 'brk': comps['brk'], 'acc': comps['acc'], 'crn': comps['crn'],
+            'short': mix['short'], 'standard': mix['standard'], 'long': mix['long'],
+            'fleet_avg': fleet_avg_1dp, 'risk': live_risk,
+            'risk_low_min': RISK_LOW_MIN, 'risk_high_max': RISK_HIGH_MAX,
+            'summary': summary, 'week_of': week_of,
+        }
+
+    enriched = _enrich_vehicles(vehicles)
+    for vv in enriched:
+        s = (veh_summaries.get(vv['plate']) or {}).get('summary')
+        if s: vv['summary'] = s
+
+    return {
+        'vehicles': enriched,
+        'incidents': out.get('incidents', []),
+        'weeks': weeks,
+        'fleet_avg': fleet_avg_1dp,
+        'num_vehicles': out.get('num_vehicles', len(vehicles)),
+        'total_trips': out.get('total_trips', 0),
+        'fleet_trend': out.get('fleet_trend', 0),
+        'date_range': date_range,
+        'fleet_insight': fleet_insight,
+    }
+
+
+def sync_company_runs(scores_all_path):
+    all_scores = json.load(open(scores_all_path))
+    base_dir = os.path.dirname(scores_all_path)
+    now_iso = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    for slug, out in all_scores.items():
+        data = build_run_data(slug, out, base_dir)
+        status = _rest('POST', 'company_runs', {
+            'company_slug': slug, 'updated_at': now_iso, 'data': data,
+        })
+        print(f'  company_runs[{slug}]: {len(data["vehicles"])} vehicles, '
+              f'avg {data["fleet_avg"]} -> {status}')
+
+
 if __name__ == '__main__':
     BASE = os.path.dirname(os.path.abspath(__file__))
-    print('Syncing to Supabase...')
-    sync(os.path.join(BASE, 'scores_only.json'))
+    print('Syncing per-company snapshots to Supabase...')
+    all_path = os.path.join(BASE, 'scores_all.json')
+    if os.path.exists(all_path):
+        sync_company_runs(all_path)
+    else:
+        # Fallback: legacy single-tenant sync (Telemax -> latest_run)
+        sync(os.path.join(BASE, 'scores_only.json'))
     print('Done.')
