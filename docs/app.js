@@ -1218,9 +1218,11 @@ function renderCompaniesAdmin(){
   el.innerHTML=_companies.map(function(c){
     var devs=Array.isArray(c.flespi_device_ids)?c.flespi_device_ids.length:0;
     // Fleet description: group + model when defined that way, else an explicit device count.
-    var fleet = c.flespi_group_id
-      ? ('group '+esc(c.flespi_group_id)+(c.device_type?(' · '+esc(c.device_type)):''))
-      : (devs+' device'+(devs===1?'':'s'));
+    var fleet = devs>0
+      ? (devs+' device'+(devs===1?'':'s')+(c.flespi_group_id?(' · from group '+esc(c.flespi_group_id)+(c.device_type?('/'+esc(c.device_type)):'')):''))
+      : (c.flespi_group_id
+          ? ('group '+esc(c.flespi_group_id)+(c.device_type?(' · '+esc(c.device_type)):''))
+          : '0 devices');
     var badge=c.is_default?'<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:var(--info-bg);color:var(--info);margin-left:6px;vertical-align:1px;">DEFAULT</span>':'';
     var del=c.is_default?'':'<button onclick="deleteCompany(\''+esc(c.id)+'\')" title="Remove company" aria-label="Remove company" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--danger);border-radius:6px;padding:5px 9px;font-size:13px;cursor:pointer;"><i class="ti ti-trash"></i></button>';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;margin-bottom:6px;">'
