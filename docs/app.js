@@ -550,8 +550,10 @@ async function loadDashboardData(){
   var upEl=document.getElementById('s-updated');
   if(upEl&&res.data.updated_at){
     var dt=new Date(res.data.updated_at);
-    upEl.textContent=dt.toLocaleDateString([],{day:'2-digit',month:'short',year:'numeric'})
+    // Compact: "09 Oct 06:47" (the year is implied and was wrapping the header).
+    upEl.textContent=dt.toLocaleDateString([],{day:'2-digit',month:'short'})
       +' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    upEl.title=dt.toLocaleString();
   }
   // Recalculate leaderboard week index
   var now=Date.now()/1000;
