@@ -99,14 +99,18 @@ def _flespi_get(path):
     with urllib.request.urlopen(req, timeout=40) as r: return json.load(r).get('result', [])
 
 def _devices_for_calc(calc):
-    """Return (devs, makes) for a calc from its assigned devices (plate = device name)."""
+    """Return (devs, makes) for a calc from its assigned devices. plate = device name;
+    make = "Make Model" from device metadata (e.g. 'Ford Ranger'), blank if absent."""
     ids = [x['device_id'] for x in _flespi_get(f'/gw/calcs/{calc}/devices/all')]
     devs={}; makes={}
     for i in range(0, len(ids), 150):
         sel = ','.join(str(x) for x in ids[i:i+150])
-        for d in _flespi_get(f'/gw/devices/{sel}?fields=id,name'):
+        for d in _flespi_get(f'/gw/devices/{sel}?fields=id,name,metadata'):
             plate = d.get('name') or str(d['id'])
-            devs[d['id']] = plate; makes[plate] = ''
+            md = d.get('metadata') or {}
+            mk = (md.get('make') or '').strip(); mdl = (md.get('model') or '').strip()
+            devs[d['id']] = plate
+            makes[plate] = ' '.join(p.title() for p in (mk, mdl) if p)
     return devs, makes
 
 def load_companies():
