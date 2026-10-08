@@ -26,6 +26,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .hdr-brand .tag{white-space:nowrap;}
 #company-switch{background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:12.5px;font-weight:600;padding:7px 11px;outline:none;cursor:pointer;max-width:230px;flex-shrink:0;}
 #company-switch:hover{background:var(--bg2);}
+/* Company-scoped users can't switch: show their company as a plain label. */
+#company-switch.locked{pointer-events:none;cursor:default;-webkit-appearance:none;appearance:none;background:var(--bg2);}
 .hdr-meta{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text3);white-space:nowrap;}
 .hdr-meta b{color:var(--text2);font-weight:600;}
 .hdr-meta .sep{opacity:.45;}
@@ -165,7 +167,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .dr-row select option{background:var(--bg2);color:var(--text);}
 .dr-row .sc{font-size:15px;font-weight:500;text-align:right;white-space:nowrap;}
 /* ── Admin users table ── */
-.au-head,.au-row{display:grid;grid-template-columns:minmax(150px,1.4fr) minmax(78px,0.9fr) minmax(78px,0.9fr) 74px 80px 104px 174px;gap:8px;align-items:center;min-width:840px;}
+.au-head,.au-row{display:grid;grid-template-columns:minmax(150px,1.4fr) minmax(78px,0.9fr) minmax(78px,0.9fr) 74px 124px 80px 104px 174px;gap:8px;align-items:center;min-width:965px;}
 .au-head{padding:2px 12px;}
 .au-head span{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;}
 .au-row{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:7px 12px;margin-bottom:5px;}

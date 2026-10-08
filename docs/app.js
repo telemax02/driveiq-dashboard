@@ -26,6 +26,8 @@ function _clearAuthHash(){
 }
 var _linkExpiredShown=false; // true while the expired-link screen is showing with no session
 var currentUser=null, currentRole='user';
+// The company this user is scoped to (profiles.company_slug). null = unrestricted.
+var currentCompany=null;
 let _drCache={};
 function loadDrivers(){ return _drCache; }
 function saveDrivers(data){ _drCache=data; }
@@ -587,8 +589,10 @@ async function showApp(){
   document.getElementById('login-view').style.display='none';
   document.getElementById('setpw-view').style.display='none';
   document.getElementById('app-root').style.display='block';
+  // Role + company must be known BEFORE startApp(), so initCompanies can scope
+  // a company-restricted user to their own company from the very first render.
+  await loadRole();
   startApp();
-  loadRole();
   recordLogin();
 }
 var _loginRecorded=false;
@@ -741,10 +745,13 @@ async function loadRole(){
   try{
     var u=await _sb.auth.getUser(); currentUser=(u&&u.data&&u.data.user)||null;
     if(currentUser){
-      var r=await _sb.from('profiles').select('role').eq('id',currentUser.id).maybeSingle();
+      // company_slug may not exist until the Stage 2 migration runs — fall back.
+      var r=await _sb.from('profiles').select('role, company_slug').eq('id',currentUser.id).maybeSingle();
+      if(r&&r.error){ r=await _sb.from('profiles').select('role').eq('id',currentUser.id).maybeSingle(); }
       currentRole=(r&&r.data&&r.data.role)||'user';
+      currentCompany=(r&&r.data&&r.data.company_slug)||null;
     }
-  }catch(e){ currentRole='user'; }
+  }catch(e){ currentRole='user'; currentCompany=null; }
   applyRoleUI();
 }
 function applyRoleUI(){
@@ -777,6 +784,7 @@ function _adminMsg(text,color){
 var _adminUsersCache=null, _editUserId=null;
 async function loadAdminUsers(){
   var el=document.getElementById('admin-users'); if(!el) return;
+  await loadProfileCompanies();   // so the Company column renders with real values
   // Cache: render the last-known list instantly, then refresh in the background
   // and only re-render if it actually changed (so it loads quick and doesn't
   // wipe an in-progress edit on every tab switch).
@@ -801,10 +809,38 @@ function _fmtLogin(ts){
   return d.getDate()+' '+mon+' '+(''+d.getFullYear()).slice(2)+', '+h+':'+(m<10?'0':'')+m+ap;
 }
 function _splitName(nm){ var p=(nm||'').trim().split(/\s+/).filter(Boolean); var f=p.shift()||''; return {first:f, last:p.join(' ')}; }
+// ── Per-user company scoping (profiles.company_slug) ───────────────────────
+// Admins already hold profiles_read / profiles_admin_update, so assigning a
+// user to a company is a direct table update — no edge function needed.
+var _profCompany={};
+async function loadProfileCompanies(){
+  try{
+    var r=await _sb.from('profiles').select('id, company_slug');
+    _profCompany={};
+    (r.data||[]).forEach(function(p){ _profCompany[p.id]=p.company_slug||''; });
+  }catch(e){ /* column absent until the Stage 2 migration is run */ }
+}
+function _companyCell(u){
+  var cur=_profCompany[u.id]||'';
+  var opts='<option value=""'+(cur===''?' selected':'')+'>All companies</option>'
+    +_companies.map(function(c){
+       return '<option value="'+esc(c.slug)+'"'+(cur===c.slug?' selected':'')+'>'+esc(c.name)+'</option>';
+     }).join('');
+  return '<select title="Which company this user can see (All = unrestricted)" '
+    +'onchange="setUserCompany(\''+u.id+'\',this.value)">'+opts+'</select>';
+}
+async function setUserCompany(id, slug){
+  var res=await _sb.from('profiles').update({company_slug: slug||null}).eq('id', id);
+  if(res&&res.error){ _adminMsg('Could not set company access: '+esc(res.error.message),'var(--danger)'); return; }
+  _profCompany[id]=slug||'';
+  var c=_companies.find(function(x){ return x.slug===slug; });
+  _adminMsg('Company access updated — '+(c?c.name:'all companies')+'.','var(--success)');
+}
+
 function renderAdminUsers(users){
   var el=document.getElementById('admin-users');
   if(!users.length){ el.innerHTML='<div class="empty">No users yet.</div>'; return; }
-  var head='<div class="au-head"><span>Email</span><span>First name</span><span>Last name</span><span>Role</span><span>Status</span><span>Last login</span><span>Actions</span></div>';
+  var head='<div class="au-head"><span>Email</span><span>First name</span><span>Last name</span><span>Role</span><span>Company access</span><span>Status</span><span>Last login</span><span>Actions</span></div>';
   el.innerHTML=head+users.map(function(u){
     var isMe=currentUser&&u.id===currentUser.id, pending=!u.confirmed, nm=_splitName(u.name);
     var status='<span class="tag" style="background:'+(pending?'var(--warning-bg)':'var(--success-bg)')+';color:'+(pending?'var(--warning)':'var(--success)')+';">'+(pending?'pending':'active')+'</span>';
@@ -819,6 +855,7 @@ function renderAdminUsers(users){
           +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
           +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
         +'</select>'
+        +_companyCell(u)
         +statusCell
         +loginCell
         +'<div class="au-actions">'
@@ -835,6 +872,7 @@ function renderAdminUsers(users){
         +'<div class="au-cell">'+(nm.first?esc(nm.first):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
         +'<div class="au-cell">'+(nm.last?esc(nm.last):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
         +'<div>'+roleBadge+'</div>'
+        +_companyCell(u)
         +statusCell
         +loginCellRO
         +'<div class="au-actions">'
@@ -1187,8 +1225,14 @@ async function initCompanies(){
     var res=await _sb.from('companies').select('*').order('is_default',{ascending:false}).order('name');
     _companies=(res&&res.data)||[];
   }catch(e){ _companies=[]; }
+  // A company-scoped user only ever sees their own company. RLS enforces this
+  // server-side as well; this keeps the UI consistent with it.
+  if(currentCompany && currentRole!=='admin'){
+    _companies=_companies.filter(function(c){ return c.slug===currentCompany; });
+  }
   var saved=null; try{ saved=localStorage.getItem('diq_company'); }catch(e){}
-  _activeCompany = _companies.find(function(c){return c.slug===saved;})
+  _activeCompany = (currentCompany ? _companies.find(function(c){return c.slug===currentCompany;}) : null)
+                || _companies.find(function(c){return c.slug===saved;})
                 || _companies.find(function(c){return c.is_default;})
                 || _companies[0] || null;
   renderCompanySwitch();
@@ -1200,6 +1244,10 @@ function renderCompanySwitch(){
   el.innerHTML=_companies.map(function(c){
     return '<option value="'+esc(c.slug)+'"'+(_activeCompany&&c.slug===_activeCompany.slug?' selected':'')+'>'+esc(c.name)+'</option>';
   }).join('');
+  // Scoped users can't switch — render their company as a static label instead.
+  var locked = !!currentCompany && currentRole!=='admin';
+  el.classList.toggle('locked', locked);
+  el.title = locked ? 'Your dashboard' : 'Select company';
 }
 function switchCompany(slug){
   var c=_companies.find(function(x){return x.slug===slug;}); if(!c) return;
