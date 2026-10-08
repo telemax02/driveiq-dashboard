@@ -63,7 +63,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .inc-head .right,.inc-row .right{text-align:right;}
 @media(max-width:700px){.inc-head,.inc-row{grid-template-columns:1.4fr 1.1fr 0.8fr 0.8fr;}.inc-hide-m{display:none;}}
 .bwrap{flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;} .bfill{height:100%;border-radius:2px;}
-.trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;box-shadow:var(--shadow);}
+.trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;box-shadow:var(--shadow);scroll-margin-top:16px;}
+/* Trip opened from the Incidents list: ring it and pulse briefly so it's unmistakable. */
+@keyframes tripFocusPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.40);}100%{box-shadow:0 0 0 12px rgba(239,68,68,0);}}
+.trip-card.trip-focus{border-color:var(--danger);border-width:1px;animation:tripFocusPulse 1.1s ease-out 2;}
 .comps{display:flex;gap:6px;} .comp{text-align:center;flex:1;}
 .comp .ck{font-size:11px;color:var(--text2);} .comp .cv{font-size:13px;font-weight:500;margin-top:2px;} .comp .cs{font-size:15px;color:var(--gold);margin-top:2px;line-height:1;letter-spacing:1px;}
 .tag{font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;}

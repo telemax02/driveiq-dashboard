@@ -247,11 +247,13 @@ function selectV(plate){
                :sz==='long'?'<span class="tag tl" style="margin-left:4px;" data-tip="Long trip: 25km or more">Long trip</span>'
                :'<span class="tag" style="margin-left:4px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);" data-tip="Standard trip: 10–24km">Standard</span>';
     const rpmTag=t.rpm_s>3?'<span class="tag" style="margin-left:4px;background:#3b0764;color:#d8b4fe;">⚡ High RPM</span>':'';
+    // Confirmed speeding incident on this trip — call it out so it's findable while browsing.
+    const incTag=t.incident?'<span class="tag" style="margin-left:4px;background:var(--danger-bg);color:var(--danger);font-weight:600;" data-tip="Confirmed speeding incident: 20+ km/h over the limit for 30s or more">&#9888; Incident'+(t.inc_mx?' +'+Math.round(t.inc_mx)+' km/h':'')+'</span>':'';
     const parts=t.t.split('→');
     const startTime=parts[0]||t.t;
     const endTime=parts[1]||'';
     const mapId='trip-map-'+t.id;
-    const card=document.createElement('div');card.className='trip-card';
+    const card=document.createElement('div');card.className='trip-card';card.id='trip-'+t.id;
     card.style.cssText='display:flex;gap:12px;align-items:stretch;';
     const infoDiv=document.createElement('div');infoDiv.style.cssText='flex:1;min-width:0;';
     infoDiv.innerHTML=
@@ -261,7 +263,7 @@ function selectV(plate){
             +'<span style="font-size:13px;font-weight:600;color:var(--text);">'+(t.date||'')+'</span>'
             +'<span style="font-size:12px;color:var(--text2);">'+startTime+(endTime?' &rarr; '+endTime:'')+'</span>'
             +'<span style="font-size:11px;color:var(--text2);">&middot; '+t.km+'km</span>'
-            +szTag+rpmTag
+            +szTag+rpmTag+incTag
           +'</div>'
           +(t.from?'<div style="font-size:11px;color:var(--text3);margin-top:4px;"><i class="ti ti-map-pin" style="font-size:10px;vertical-align:-1px;color:var(--info);"></i> <span style="color:var(--text2);">'+t.from+'</span>'+(t.to?' &rarr; <span style="color:var(--text2);">'+t.to+'</span>':'')+'</div>':'')
         +'</div>'
@@ -1370,7 +1372,8 @@ function renderIncidents(){
   el.innerHTML=list.map(function(x){
     var mx=Math.round(x.mx||0);
     var sev = mx>=40 ? 'var(--danger)' : (mx>=30 ? 'var(--warning)' : 'var(--text)');
-    return '<div class="inc-row" onclick="switchTab(\'dash\');selectV(\''+esc(x.plate)+'\');">'
+    var tid=String(x.trip||'').replace(/^#/,'');   // incidents store the trip as "#<id>"
+    return '<div class="inc-row" title="Open this trip" onclick="focusTrip(\''+esc(x.plate)+'\',\''+esc(tid)+'\')">'
       +'<div style="min-width:0;"><div style="font-weight:600;">'+esc(x.plate)+'</div>'
         +'<div style="font-size:11px;color:var(--text3);">'+esc(x.make||'')+'</div></div>'
       +'<div><div>'+esc(x.date||'')+'</div><div style="font-size:11px;color:var(--text3);">'+esc(x.time||'')+'</div></div>'
@@ -1380,6 +1383,21 @@ function renderIncidents(){
       +'<div class="inc-hide-m" style="font-size:11px;color:var(--text2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(x.loc||'—')+'</div>'
       +'</div>';
   }).join('');
+}
+
+// Jump from an incident straight to the exact trip that caused it: open the
+// vehicle, scroll that trip into view and keep it highlighted so it's obvious.
+function focusTrip(plate, tripId){
+  switchTab('dash');
+  selectV(plate);
+  setTimeout(function(){
+    Array.prototype.forEach.call(document.querySelectorAll('.trip-card.trip-focus'),
+      function(n){ n.classList.remove('trip-focus'); });
+    var card=document.getElementById('trip-'+tripId);
+    if(!card){ return; }   // trip outside the scored window — vehicle is still opened
+    card.classList.add('trip-focus');
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 60);
 }
 
 // ── CSV export ──────────────────────────────────────────────────────────────
