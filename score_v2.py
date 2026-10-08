@@ -98,6 +98,16 @@ def _flespi_get(path):
     req = urllib.request.Request('https://flespi.io'+path, headers={'Authorization':f'FlespiToken {TOKEN}'})
     with urllib.request.urlopen(req, timeout=40) as r: return json.load(r).get('result', [])
 
+_MAKE_FIX = {'MERCEDES-BEN': 'Mercedes-Benz', 'MERCEDES-BENZ': 'Mercedes-Benz'}
+def _fmt_token(w):
+    # Keep alphanumeric model codes uppercase (CX-3, GLE300D, I30, E5); title-case words.
+    return w.upper() if any(c.isdigit() for c in w) else w.title()
+def _fmt_make_model(mk, mdl):
+    mk = (mk or '').strip(); mdl = (mdl or '').strip()
+    mk_f = _MAKE_FIX.get(mk.upper()) or ' '.join(_fmt_token(w) for w in mk.split())
+    mdl_f = ' '.join(_fmt_token(w) for w in mdl.split())
+    return ' '.join(p for p in (mk_f, mdl_f) if p)
+
 def _devices_for_calc(calc):
     """Return (devs, makes) for a calc from its assigned devices. plate = device name;
     make = "Make Model" from device metadata (e.g. 'Ford Ranger'), blank if absent."""
@@ -108,9 +118,8 @@ def _devices_for_calc(calc):
         for d in _flespi_get(f'/gw/devices/{sel}?fields=id,name,metadata'):
             plate = d.get('name') or str(d['id'])
             md = d.get('metadata') or {}
-            mk = (md.get('make') or '').strip(); mdl = (md.get('model') or '').strip()
             devs[d['id']] = plate
-            makes[plate] = ' '.join(p.title() for p in (mk, mdl) if p)
+            makes[plate] = _fmt_make_model(md.get('make'), md.get('model'))
     return devs, makes
 
 def load_companies():
