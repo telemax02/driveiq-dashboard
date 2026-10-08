@@ -54,11 +54,21 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
 <div class="page" id="app-root" style="display:none;">
   <!-- ── Header ── -->
   <div class="header">
-    <div class="hdr-brand">
-      <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;">
-        <span style="color:var(--text2);">Drive</span><span style="color:#7cb83e;">IQ</span>
+    <div class="hdr-top">
+      <div class="hdr-brand">
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;">
+          <span style="color:var(--text2);">Drive</span><span style="color:#7cb83e;">IQ</span>
+        </div>
+        <div class="tag" style="border-top:2px solid #7cb83e;margin-top:4px;padding-top:4px;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--text3);text-transform:uppercase;">Intelligent Driving Analytics</div>
       </div>
-      <div class="tag" style="border-top:2px solid #7cb83e;margin-top:4px;padding-top:4px;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--text3);text-transform:uppercase;">Intelligent Driving Analytics</div>
+      <select id="company-switch" onchange="switchCompany(this.value)" title="Select company" aria-label="Select company" style="display:none;"></select>
+      <div class="hdr-meta">
+        <span><b id="s-trips">—</b> scored trips</span>
+        <span class="sep">·</span>
+        <span>Updated <b id="s-updated">—</b></span>
+      </div>
+      <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark theme" aria-label="Toggle theme"><i class="ti ti-sun"></i></button>
+      <button id="signout-btn" class="theme-toggle" onclick="doLogout()" title="Sign out" aria-label="Sign out"><i class="ti ti-logout"></i></button>
     </div>
     <div class="tabs">
       <button class="tab active" id="tab-dash" onclick="switchTab('dash')"><i class="ti ti-layout-dashboard" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Dashboard</button>
@@ -67,13 +77,6 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
       <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')" style="display:none;"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
       <button class="tab" id="tab-admin" onclick="switchTab('admin')" style="display:none;"><i class="ti ti-shield-lock" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Admin</button>
-    </div>
-    <div class="hdr-right">
-      <select id="company-switch" onchange="switchCompany(this.value)" title="Select company" aria-label="Select company" style="display:none;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-weight:600;padding:7px 10px;outline:none;cursor:pointer;max-width:200px;flex-shrink:0;"></select>
-      <div class="hdr-stat"><div class="k">Scored trips</div><div class="v" id="s-trips">—</div></div>
-      <div class="hdr-stat"><div class="k">Last updated</div><div class="v" id="s-updated">—</div></div>
-      <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark theme" aria-label="Toggle theme"><i class="ti ti-sun"></i></button>
-      <button id="signout-btn" class="theme-toggle" onclick="doLogout()" title="Sign out" aria-label="Sign out"><i class="ti ti-logout"></i></button>
     </div>
   </div>
 

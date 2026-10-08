@@ -16,17 +16,20 @@
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;transition:background-color .2s ease,color .2s ease;}
 .page{max-width:1100px;margin:0 auto;padding:24px 20px;}
 /* ── Header & Tabs ── */
-.header{display:flex;align-items:center;margin-bottom:20px;gap:12px;flex-wrap:wrap;}
+/* Two-tier header: identity + context + status on top, navigation beneath.
+   Keeps one clean row each instead of three sections fighting for width
+   (which squashed the tagline and timestamp once tabs grew). */
+.header{display:flex;flex-direction:column;gap:12px;margin-bottom:20px;}
 .header h1{font-size:20px;font-weight:500;white-space:nowrap;}
-.tabs{display:flex;background:var(--bg2);border-radius:8px;padding:3px;gap:2px;border:0.5px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
-/* Header brand + right-hand cluster: hold their natural width so neither the
-   tagline nor the stats get squashed onto multiple lines as tabs are added. */
+.hdr-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
 .hdr-brand{display:flex;flex-direction:column;gap:0;line-height:1;flex:0 0 auto;}
 .hdr-brand .tag{white-space:nowrap;}
-.hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px;flex-shrink:0;}
-.hdr-stat{text-align:right;white-space:nowrap;}
-.hdr-stat .k{font-size:10px;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px;}
-.hdr-stat .v{font-size:12px;color:var(--text2);font-weight:500;}
+#company-switch{background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-size:12.5px;font-weight:600;padding:7px 11px;outline:none;cursor:pointer;max-width:230px;flex-shrink:0;}
+#company-switch:hover{background:var(--bg2);}
+.hdr-meta{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text3);white-space:nowrap;}
+.hdr-meta b{color:var(--text2);font-weight:600;}
+.hdr-meta .sep{opacity:.45;}
+.tabs{display:flex;background:var(--bg2);border-radius:8px;padding:3px;gap:2px;border:0.5px solid var(--border);align-self:flex-start;flex-wrap:wrap;max-width:100%;}
 .tab{background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:600;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .tab:hover{color:var(--text);}
 .tab.active{background:var(--bg3);color:var(--text);border:0.5px solid var(--border);}
