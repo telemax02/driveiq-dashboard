@@ -55,6 +55,9 @@ let weeksData=[];
 // yet (pre-migration) or the user isn't invited — the app then behaves as before.
 let _companies=[];
 let _activeCompany=null;
+// Vehicle-ranking controls (filter text + best/worst ordering)
+let _rankQuery='';
+let _rankSort='best';
 
 // ── Tab switching ──────────────────────────────────────────────────────────
 function switchTab(tab){
@@ -63,14 +66,17 @@ function switchTab(tab){
   document.getElementById('view-drivers').style.display = tab==='drivers'?'':'none';
   document.getElementById('view-faq').style.display     = tab==='faq'?'':'none';
   document.getElementById('view-admin').style.display   = tab==='admin'?'':'none';
+  var _vi=document.getElementById('view-inc'); if(_vi) _vi.style.display = tab==='inc'?'':'none';
   document.getElementById('tab-dash').classList.toggle('active',    tab==='dash');
   document.getElementById('tab-lb').classList.toggle('active',      tab==='lb');
   document.getElementById('tab-drivers').classList.toggle('active', tab==='drivers');
   document.getElementById('tab-faq').classList.toggle('active',     tab==='faq');
   document.getElementById('tab-admin').classList.toggle('active',   tab==='admin');
+  var _ti=document.getElementById('tab-inc'); if(_ti) _ti.classList.toggle('active', tab==='inc');
   if(tab==='lb') renderLeaderboard();
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
+  if(tab==='inc') renderIncidents();
   if(tab==='admin'){ loadAdminUsers(); loadCompaniesAdmin(); }
   if(tab==='faq') setupFaqAccordion();
 }
@@ -100,10 +106,23 @@ function renderRanking(){
   if(!vehicles.length){ renderCompanyEmpty(); return; }
   const el=document.getElementById('ranking');el.innerHTML='';
   const M=['🥇','🥈','🥉'];
-  vehicles.forEach(function(v,i){
+  var _drAll=loadDrivers();
+  var _q=(_rankQuery||'').trim().toLowerCase();
+  var list=vehicles.filter(function(v){
+    if(!_q) return true;
+    var d=_drAll[v.plate]||{};
+    return ((v.plate||'')+' '+(v.make||'')+' '+(d.first||'')+' '+(d.last||'')).toLowerCase().indexOf(_q)>=0;
+  });
+  if(_rankSort==='worst') list=list.slice().sort(function(a,b){ return (a.avg||0)-(b.avg||0); });
+  var _cnt=document.getElementById('rank-count');
+  if(_cnt) _cnt.textContent=(_q?list.length+' of '+vehicles.length+' vehicles':vehicles.length+' vehicles')
+    +(_rankSort==='worst'?' · worst first':'');
+  if(!list.length){ el.innerHTML='<div class="empty" style="font-size:12px;">No vehicles match that filter.</div>'; return; }
+  list.forEach(function(v,i){
     const row=document.createElement('div');
     row.className='rank-row'+(sel===v.plate?' active':'');
-    const badge=i<3?'<span style="font-size:15px;">'+M[i]+'</span>':'<span style="font-size:12px;font-weight:600;color:var(--text2);">#'+(i+1)+'</span>';
+    var _rk=v.rank||(i+1);
+    const badge=_rk<=3?'<span style="font-size:15px;">'+M[_rk-1]+'</span>':'<span style="font-size:12px;font-weight:600;color:var(--text2);">#'+_rk+'</span>';
     const ti=v.trend==='improving'
       ?'<i class="ti ti-trending-up" style="font-size:13px;color:var(--success);" title="Improving"></i>'
       :v.trend==='declining'
@@ -119,7 +138,7 @@ function renderRanking(){
           (dName
             ? '<span style="font-size:12px;font-weight:600;">'+dName+'</span>'
             : '<span style="font-size:11px;font-weight:500;">'+v.plate+'</span>')+
-          (v.low_cov?'<span style="font-size:9px;color:var(--warning);">low cov</span>':'')+
+          (v.low_cov?'<span title="Speed-limit coverage under 60% — speeding was only partially measured on this vehicle&#39;s trips, so the scoring weight shifts to braking, acceleration and cornering." style="font-size:9px;color:var(--warning);cursor:help;border-bottom:1px dotted var(--warning);">low cov</span>':'')+
         '</div>'+
         (dName?'<div style="font-size:11px;color:var(--text2);margin-bottom:2px;">'+v.plate+' &middot; '+v.make+'</div>':
                 '<div style="font-size:11px;color:var(--text2);margin-bottom:2px;">'+v.make+'</div>')+
@@ -513,13 +532,14 @@ async function loadDashboardData(){
     if(lr&&lr.data) res=lr;
   }
   if(res.error&&!res.data){ console.error('Failed to load data',res.error); return; }
-  if(!res.data){ vehicles=[]; incData=[]; weeksData=[]; _lastUpdatedAt=null; _lastSlug=slug; return; }
+  if(!res.data){ vehicles=[]; incData=[]; weeksData=[]; _lastUpdatedAt=null; _lastSlug=slug; updateIncCount(); return; }
   if(_lastUpdatedAt&&res.data.updated_at===_lastUpdatedAt&&_lastSlug===slug) return;
   _lastUpdatedAt=res.data.updated_at; _lastSlug=slug;
   var d=res.data.data;
   vehicles=d.vehicles||[];
   incData=d.incidents||[];
   weeksData=d.weeks||[];
+  updateIncCount();
   // Stat cards
   var fa=d.fleet_avg||0, ft=d.fleet_trend||0;
   document.getElementById('s-avg').textContent=fmt1(fa);
@@ -1270,4 +1290,72 @@ async function deleteCompany(id){
     _lastUpdatedAt=null;
     loadDashboardData().then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
   }
+}
+
+// ── Vehicle-ranking controls (filter + best/worst ordering) ─────────────────
+function setRankQuery(q){ _rankQuery=q||''; renderRanking(); }
+function toggleRankSort(){
+  _rankSort = (_rankSort==='best') ? 'worst' : 'best';
+  var b=document.getElementById('rank-sort-btn');
+  if(b) b.textContent = (_rankSort==='best') ? 'Best first' : 'Worst first';
+  renderRanking();
+}
+
+// ── Incidents ───────────────────────────────────────────────────────────────
+// Confirmed speeding incidents: >=20 km/h over the limit, >=30s, >=70% coverage.
+function updateIncCount(){
+  var b=document.getElementById('inc-count'); if(!b) return;
+  var n=(incData||[]).length;
+  b.textContent=n; b.style.display = n ? '' : 'none';
+}
+function _fmtDur(s){ s=Math.round(s||0); return s<60 ? s+'s' : Math.floor(s/60)+'m '+(s%60)+'s'; }
+function renderIncidents(){
+  updateIncCount();
+  var el=document.getElementById('inc-list'); if(!el) return;
+  var list=(incData||[]).slice().sort(function(a,b){ return (b.mx||0)-(a.mx||0); });
+  if(!list.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-shield-check" style="font-size:18px;display:block;margin-bottom:8px;color:var(--success);"></i>No confirmed speeding incidents for this company.</div>';
+    return;
+  }
+  el.innerHTML=list.map(function(x){
+    var mx=Math.round(x.mx||0);
+    var sev = mx>=40 ? 'var(--danger)' : (mx>=30 ? 'var(--warning)' : 'var(--text)');
+    return '<div class="inc-row" onclick="switchTab(\'dash\');selectV(\''+esc(x.plate)+'\');">'
+      +'<div style="min-width:0;"><div style="font-weight:600;">'+esc(x.plate)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);">'+esc(x.make||'')+'</div></div>'
+      +'<div><div>'+esc(x.date||'')+'</div><div style="font-size:11px;color:var(--text3);">'+esc(x.time||'')+'</div></div>'
+      +'<div class="right" style="font-weight:600;color:'+sev+';">+'+mx+' km/h</div>'
+      +'<div class="right">'+_fmtDur(x.dur)+'</div>'
+      +'<div class="right inc-hide-m">+'+(x.avg||0)+' km/h</div>'
+      +'<div class="inc-hide-m" style="font-size:11px;color:var(--text2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(x.loc||'—')+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── CSV export ──────────────────────────────────────────────────────────────
+function _csvCell(c){ c=(c==null?'':String(c)); return /[",\n]/.test(c) ? '"'+c.replace(/"/g,'""')+'"' : c; }
+function _downloadCsv(filename, rows){
+  var csv=rows.map(function(r){ return r.map(_csvCell).join(','); }).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+}
+function _companyTag(){ return (_activeCompany&&_activeCompany.slug)||'fleet'; }
+function exportRanking(){
+  var drAll=loadDrivers();
+  var rows=[['Rank','Rego','Make/Model','Driver','Score','Speeding','Braking','Acceleration','Cornering','Trips','Avg GPS coverage %','Low coverage','Trend']];
+  vehicles.forEach(function(v,i){
+    var d=drAll[v.plate]||{}, ca=v.comp_avgs||{};
+    var nm=((d.first||'').trim()+' '+((d.last||'').trim()?(d.last||'').trim().toUpperCase()+'.':'')).trim();
+    rows.push([v.rank||(i+1), v.plate, v.make||'', nm, v.avg, (ca.spd==null?'':ca.spd), ca.brk, ca.acc, ca.crn,
+               (v.trips||[]).length, v.avg_cov, v.low_cov?'yes':'no', v.trend||'']);
+  });
+  _downloadCsv('driveiq_'+_companyTag()+'_ranking.csv', rows);
+}
+function exportIncidents(){
+  var rows=[['Rego','Make/Model','Date','Time','Peak over limit (km/h)','Duration (s)','Avg over limit (km/h)','Location']];
+  (incData||[]).slice().sort(function(a,b){ return (b.mx||0)-(a.mx||0); }).forEach(function(x){
+    rows.push([x.plate, x.make||'', x.date||'', x.time||'', Math.round(x.mx||0), Math.round(x.dur||0), x.avg||0, x.loc||'']);
+  });
+  _downloadCsv('driveiq_'+_companyTag()+'_incidents.csv', rows);
 }

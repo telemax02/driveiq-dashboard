@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
     <div class="tabs">
       <button class="tab active" id="tab-dash" onclick="switchTab('dash')"><i class="ti ti-layout-dashboard" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Dashboard</button>
       <button class="tab" id="tab-lb" onclick="switchTab('lb')"><i class="ti ti-trophy" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--gold);"></i>Weekly Leaderboard</button>
+      <button class="tab" id="tab-inc" onclick="switchTab('inc')"><i class="ti ti-alert-triangle" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--danger);"></i>Incidents<span id="inc-count" style="margin-left:5px;font-size:10px;font-weight:600;padding:0 5px;border-radius:8px;background:var(--danger-bg);color:var(--danger);display:none;"></span></button>
       <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')" style="display:none;"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
       <button class="tab" id="tab-admin" onclick="switchTab('admin')" style="display:none;"><i class="ti ti-shield-lock" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Admin</button>
@@ -84,11 +85,45 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
       <div class="stat" id="fleet-avg-card" style="grid-column:span 3;display:flex;gap:18px;align-items:stretch;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div id="s-stars" style="font-size:14px;line-height:1;letter-spacing:1px;"></div></div></div><div id="tier-breakdown" style="flex:1;border-left:1px solid var(--bg3);padding-left:18px;"></div></div>
     </div>
     <div class="main">
-      <div><div class="slabel">Vehicle ranking &mdash; click to view trips</div><div id="ranking"></div></div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;">
+          <div class="slabel" style="margin-bottom:0;">Vehicle ranking</div>
+          <div style="display:flex;gap:4px;">
+            <button id="rank-sort-btn" class="mini-btn" onclick="toggleRankSort()" title="Toggle best / worst first">Best first</button>
+            <button class="mini-btn" onclick="exportRanking()" title="Export ranking to CSV" aria-label="Export ranking to CSV"><i class="ti ti-download" style="font-size:12px;"></i></button>
+          </div>
+        </div>
+        <input id="rank-search" type="text" placeholder="Filter rego, make or driver&hellip;" oninput="setRankQuery(this.value)"
+          style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 9px;outline:none;margin-bottom:8px;box-sizing:border-box;">
+        <div id="ranking"></div>
+        <div id="rank-count" style="font-size:10px;color:var(--text3);margin-top:6px;"></div>
+      </div>
       <div><div class="slabel" id="trip-label">Select a vehicle</div>
       <div id="vehicle-summary"></div>
       <div id="trips" style="scroll-behavior:smooth;"><div class="empty"><i class="ti ti-arrow-left" style="font-size:18px;display:block;margin-bottom:8px;"></i>Click a vehicle to see all trips</div></div></div>
     </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       INCIDENTS VIEW
+  ══════════════════════════════════════════ -->
+  <div id="view-inc" style="display:none;">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+      <div>
+        <div class="slabel" style="margin-bottom:3px;">Confirmed speeding incidents</div>
+        <div style="font-size:11.5px;color:var(--text3);line-height:1.5;max-width:620px;">Only the serious kind: at least <b style="color:var(--text2);">20 km/h over the limit</b>, sustained for <b style="color:var(--text2);">30 seconds or more</b>, with reliable GPS coverage. Click a row to open that vehicle.</div>
+      </div>
+      <button class="mini-btn" onclick="exportIncidents()" title="Export incidents to CSV"><i class="ti ti-download" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>Export CSV</button>
+    </div>
+    <div class="inc-head">
+      <span>Vehicle</span>
+      <span>When</span>
+      <span class="right">Peak over</span>
+      <span class="right">Duration</span>
+      <span class="right inc-hide-m">Avg over</span>
+      <span class="inc-hide-m">Location</span>
+    </div>
+    <div id="inc-list"></div>
   </div>
 
   <!-- ══════════════════════════════════════════
