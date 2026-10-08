@@ -368,7 +368,9 @@ def build_run_data(slug, out, base_dir):
     vehicles = out.get('vehicles', [])
     weeks = _compute_weeks(vehicles)
     date_range = _date_range(vehicles)
-    _vavgs = [_precise_avg(v) for v in vehicles]
+    # Established vehicles only, so a single-trip vehicle can't swing the fleet average.
+    _base = [v for v in vehicles if not v.get('provisional')] or vehicles
+    _vavgs = [_precise_avg(v) for v in _base]
     fleet_avg_1dp = round(sum(_vavgs) / len(_vavgs), 1) if _vavgs else out.get('fleet_avg', 0)
 
     # Fleet-insight panel: component stars + trip mix + risk are computed live from

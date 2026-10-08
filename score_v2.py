@@ -7,8 +7,19 @@ TOKEN = os.environ['FLESPI_TOKEN']
 # carry their own calc id in the Supabase `companies` table.
 TELEMAX_CALC = os.environ.get('FLESPI_CALC_ID', '2923614')
 BNE=36000
-# Data window starts 2 Jun 2026 00:00 AEST
+# Data window starts 2 Jun 2026 00:00 AEST (absolute floor — no data before this)
 TODAY = int((datetime.datetime(2026, 6, 2) - datetime.datetime(1970, 1, 1)).total_seconds()) - BNE
+# Rolling scoring window. A cumulative all-time mean gave scores enormous
+# inertia: a vehicle with ~4,300km of history at 63 needed ~11,500km of flawless
+# driving (2.7x its whole history, ~a year) just to reach 90, so real improvement
+# was invisible for months. Only the last WINDOW_DAYS now count.
+WINDOW_DAYS = int(os.environ.get('DRIVEIQ_WINDOW_DAYS', '30'))
+_NOW   = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+CUTOFF = max(TODAY, _NOW - WINDOW_DAYS * 86400)
+# Minimum exposure before a score is treated as established. Without this a
+# vehicle with one 5km trip shows a headline score that a single trip can swing
+# by 50 points.
+MIN_KM, MIN_TRIPS = 200, 3
 # Telemax fleet (curated plate/make map — keeps Telemax output identical).
 DEVS={6536476:'856KZ4',6605289:'387BX3',6605473:'627KB5',6613713:'136YSI',6711239:'570RSO',6884310:'534JDZ',6884322:'934NQ4',6884325:'WHOOP',7419562:'476NP5',7585062:'344IT2',7734421:'VolvoXC60',7734429:'873BX8',8180103:'498IO7'}
 MAKES={'856KZ4':'Toyota Hilux','387BX3':'GWM Cannon','627KB5':'BYD Seal','136YSI':'Hyundai Elantra','570RSO':'Subaru Forester','534JDZ':'Honda Jazz','934NQ4':'Ford Ranger','WHOOP':'Ford Ranger','476NP5':'Nissan Murano','344IT2':'Ford Ranger','VolvoXC60':'Volvo XC60','873BX8':'Hyundai i30','498IO7':'Toyota Corolla'}
@@ -56,7 +67,7 @@ def score_fleet(calc, devs, makes):
     pipeline, parameterised by calc id + device/plate/make maps."""
     raw_intervals={}
     for did,pl in devs.items():
-        ints=[t for t in fetch(calc,did) if t.get('begin',0)>=TODAY and t.get('mileage_km',0)>=3.0 and t.get('moving_time_s',0)>=240]
+        ints=[t for t in fetch(calc,did) if t.get('begin',0)>=CUTOFF and t.get('mileage_km',0)>=3.0 and t.get('moving_time_s',0)>=240]
         raw_intervals[did]=(pl,ints)
     veh=[]; inc=[]
     for did,(pl,ints) in raw_intervals.items():
@@ -72,15 +83,21 @@ def score_fleet(calc, devs, makes):
         cov_trips=[t for t in trips if t['cov_pct']>0]
         avg_cov=round(sum(t['cov_pct'] for t in cov_trips)/len(cov_trips)) if cov_trips else 0
         low_cov=avg_cov<60 and len(cov_trips)>0
+        # Not enough driving yet for the score to mean much (one trip could swing it wildly).
+        provisional = km_total < MIN_KM or len(trips) < MIN_TRIPS
         veh.append({'plate':pl,'make':makes.get(pl,''),'avg':avg,'inc':any(t['incident'] for t in trips),
-                    'avg_cov':avg_cov,'low_cov':low_cov,'trips':trips})
+                    'avg_cov':avg_cov,'low_cov':low_cov,'km_total':round(km_total),
+                    'provisional':provisional,'trips':trips})
         [inc.append({'plate':pl,'make':makes.get(pl,''),'trip':f'#{t["id"]}','time':t['t'],'date':t['date'],
                      'mx':t['inc_mx'],'dur':t['inc_dur'],'avg':t['inc_avg'],
                      'begin_ts':t['begin_ts'],'end_ts':t['end_ts'],'dev_id':did,
                      'datetime':'','speed':'','loc':'','coords':[]})
          for t in trips if t['incident']]
     veh.sort(key=lambda x:x['avg'],reverse=True); inc.sort(key=lambda x:x['mx'],reverse=True)
-    fa=round(sum(v['avg'] for v in veh)/len(veh)) if veh else 0
+    # Fleet average from established vehicles only, so a one-trip vehicle can't
+    # swing it (falls back to all vehicles while none have enough exposure yet).
+    _base=[v for v in veh if not v['provisional']] or veh
+    fa=round(sum(v['avg'] for v in _base)/len(_base)) if _base else 0
     return {'vehicles':veh,'incidents':inc,'fleet_avg':fa,'total_trips':sum(len(v['trips']) for v in veh),
             'generated':datetime.datetime.utcnow().strftime('%d %b %Y %H:%M UTC'),'num_vehicles':len(veh)}
 

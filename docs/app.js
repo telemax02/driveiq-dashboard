@@ -141,6 +141,7 @@ function renderRanking(){
             ? '<span style="font-size:12px;font-weight:600;">'+dName+'</span>'
             : '<span style="font-size:11px;font-weight:500;">'+v.plate+'</span>')+
           (v.low_cov?'<span title="Speed-limit coverage under 60% — speeding was only partially measured on this vehicle&#39;s trips, so the scoring weight shifts to braking, acceleration and cornering." style="font-size:9px;color:var(--warning);cursor:help;border-bottom:1px dotted var(--warning);">low cov</span>':'')+
+          (v.provisional?'<span title="Provisional: under 200km or fewer than 3 scored trips in the last 30 days, so a single trip can still move this score a lot. It settles as more driving is recorded, and it is excluded from the fleet average." style="font-size:9px;color:var(--info);cursor:help;border-bottom:1px dotted var(--info);">provisional</span>':'')+
         '</div>'+
         (dName?'<div style="font-size:11px;color:var(--text2);margin-bottom:2px;">'+v.plate+' &middot; '+v.make+'</div>':
                 '<div style="font-size:11px;color:var(--text2);margin-bottom:2px;">'+v.make+'</div>')+
