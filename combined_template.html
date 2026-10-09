@@ -54,24 +54,29 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
 <div class="page" id="app-root" style="display:none;">
   <!-- ── Header ── -->
   <div class="header">
-    <div style="display:flex;flex-direction:column;gap:0;line-height:1;flex:1;">
-      <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;">
-        <span style="color:var(--text2);">Drive</span><span style="color:#7cb83e;">IQ</span>
+    <div class="hdr-top">
+      <div class="hdr-brand">
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;">
+          <span style="color:var(--text2);">Drive</span><span style="color:#7cb83e;">IQ</span>
+        </div>
+        <div class="tag" style="border-top:2px solid #7cb83e;margin-top:4px;padding-top:4px;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--text3);text-transform:uppercase;">Intelligent Driving Analytics</div>
       </div>
-      <div style="border-top:2px solid #7cb83e;margin-top:4px;padding-top:4px;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--text3);text-transform:uppercase;">Intelligent Driving Analytics</div>
+      <select id="company-switch" onchange="switchCompany(this.value)" title="Select company" aria-label="Select company" style="display:none;"></select>
+      <div class="hdr-meta">
+        <span><b id="s-trips">—</b> scored trips</span>
+        <span class="sep">·</span>
+        <span>Updated <b id="s-updated">—</b></span>
+      </div>
+      <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark theme" aria-label="Toggle theme"><i class="ti ti-sun"></i></button>
+      <button id="signout-btn" class="theme-toggle" onclick="doLogout()" title="Sign out" aria-label="Sign out"><i class="ti ti-logout"></i></button>
     </div>
     <div class="tabs">
       <button class="tab active" id="tab-dash" onclick="switchTab('dash')"><i class="ti ti-layout-dashboard" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Dashboard</button>
       <button class="tab" id="tab-lb" onclick="switchTab('lb')"><i class="ti ti-trophy" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--gold);"></i>Weekly Leaderboard</button>
+      <button class="tab" id="tab-inc" onclick="switchTab('inc')"><i class="ti ti-alert-triangle" style="font-size:11px;vertical-align:-1px;margin-right:4px;color:var(--danger);"></i>Incidents<span id="inc-count" style="margin-left:5px;font-size:10px;font-weight:600;padding:0 5px;border-radius:8px;background:var(--danger-bg);color:var(--danger);display:none;"></span></button>
       <button class="tab" id="tab-faq" onclick="switchTab('faq')"><i class="ti ti-help-circle" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>FAQ</button>
       <button class="tab" id="tab-drivers" onclick="switchTab('drivers')" style="display:none;"><i class="ti ti-users" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Drivers</button>
       <button class="tab" id="tab-admin" onclick="switchTab('admin')" style="display:none;"><i class="ti ti-shield-lock" style="font-size:11px;vertical-align:-1px;margin-right:4px;"></i>Admin</button>
-    </div>
-    <div style="flex:1;display:flex;justify-content:flex-end;align-items:center;gap:20px;">
-      <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Scored trips</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-trips">—</div></div>
-      <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">Last updated</div><div style="font-size:12px;color:var(--text2);font-weight:500;" id="s-updated">—</div></div>
-      <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark theme" aria-label="Toggle theme"><i class="ti ti-sun"></i></button>
-      <button id="signout-btn" class="theme-toggle" onclick="doLogout()" title="Sign out" aria-label="Sign out"><i class="ti ti-logout"></i></button>
     </div>
   </div>
 
@@ -83,11 +88,45 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
       <div class="stat" id="fleet-avg-card" style="grid-column:span 3;display:flex;gap:18px;align-items:stretch;"><div style="flex-shrink:0;"><div class="lbl">Fleet average</div><div class="val" style="color:var(--info);margin-top:5px;" id="s-avg">—</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><div id="s-stars" style="font-size:14px;line-height:1;letter-spacing:1px;"></div></div></div><div id="tier-breakdown" style="flex:1;border-left:1px solid var(--bg3);padding-left:18px;"></div></div>
     </div>
     <div class="main">
-      <div><div class="slabel">Vehicle ranking &mdash; click to view trips</div><div id="ranking"></div></div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;">
+          <div class="slabel" style="margin-bottom:0;">Vehicle ranking</div>
+          <div style="display:flex;gap:4px;">
+            <button id="rank-sort-btn" class="mini-btn" onclick="toggleRankSort()" title="Toggle best / worst first">Best first</button>
+            <button class="mini-btn" onclick="exportRanking()" title="Export ranking to CSV" aria-label="Export ranking to CSV"><i class="ti ti-download" style="font-size:12px;"></i></button>
+          </div>
+        </div>
+        <input id="rank-search" type="text" placeholder="Filter rego, make or driver&hellip;" oninput="setRankQuery(this.value)"
+          style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 9px;outline:none;margin-bottom:8px;box-sizing:border-box;">
+        <div id="ranking"></div>
+        <div id="rank-count" style="font-size:10px;color:var(--text3);margin-top:6px;"></div>
+      </div>
       <div><div class="slabel" id="trip-label">Select a vehicle</div>
       <div id="vehicle-summary"></div>
       <div id="trips" style="scroll-behavior:smooth;"><div class="empty"><i class="ti ti-arrow-left" style="font-size:18px;display:block;margin-bottom:8px;"></i>Click a vehicle to see all trips</div></div></div>
     </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       INCIDENTS VIEW
+  ══════════════════════════════════════════ -->
+  <div id="view-inc" style="display:none;">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+      <div>
+        <div class="slabel" style="margin-bottom:3px;">Confirmed speeding incidents</div>
+        <div style="font-size:11.5px;color:var(--text3);line-height:1.5;max-width:620px;">Only the serious kind: at least <b style="color:var(--text2);">20 km/h over the limit</b>, sustained for <b style="color:var(--text2);">30 seconds or more</b>, with reliable GPS coverage. Click a row to open that vehicle.</div>
+      </div>
+      <button class="mini-btn" onclick="exportIncidents()" title="Export incidents to CSV"><i class="ti ti-download" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>Export CSV</button>
+    </div>
+    <div class="inc-head">
+      <span>Vehicle</span>
+      <span>When</span>
+      <span class="right">Peak over</span>
+      <span class="right">Duration</span>
+      <span class="right inc-hide-m">Avg over</span>
+      <span class="inc-hide-m">Location</span>
+    </div>
+    <div id="inc-list"></div>
   </div>
 
   <!-- ══════════════════════════════════════════
@@ -198,7 +237,7 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
 
       <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:7px;"><i class="ti ti-chart-bar" style="color:var(--info);vertical-align:-1px;margin-right:6px;"></i>How is a vehicle's overall score worked out?</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.65;">It's the average of all that vehicle's trips, weighted by distance — so a long highway trip counts for more than a quick run down the road, which reflects real driving. Scores are shown to one decimal place so two vehicles that are very close can still be told apart.</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.65;">It's the average of that vehicle's trips over the <b style="color:var(--text);">last 30 days</b>, weighted by distance — so a long highway trip counts for more than a quick run down the road, which reflects real driving. Because only the last 30 days count, <b style="color:var(--text);">driving better shows up in your score within weeks</b> instead of being buried under months of past history. A vehicle with under 200km or fewer than 3 scored trips in that period is marked <b style="color:var(--text);">provisional</b> — a single trip can still move it a lot, so it's left out of the fleet average until it settles. Scores are shown to one decimal place so two vehicles that are very close can still be told apart.</div>
       </div>
 
       <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
@@ -249,6 +288,24 @@ document.addEventListener('DOMContentLoaded',applyThemeIcon);
     </div>
     <div class="slabel">Users</div>
     <div id="admin-users" style="max-width:560px;"></div>
+
+    <div class="slabel" style="margin-top:26px;">Companies</div>
+    <div class="stat" style="margin-bottom:16px;max-width:560px;">
+      <div class="lbl" style="margin-bottom:9px;">Add a company</div>
+      <form id="company-form" onsubmit="addCompany(event)" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:2;min-width:150px;"><label class="inv-l" for="co-name">Company name</label><input id="co-name" type="text" placeholder="Acme Rentals" class="inv-i"></div>
+        <div style="flex:1;min-width:120px;"><label class="inv-l" for="co-group">Flespi group ID</label><input id="co-group" type="text" placeholder="e.g. 586084" class="inv-i"></div>
+        <div style="flex:1;min-width:104px;"><label class="inv-l" for="co-type">Device model</label><input id="co-type" type="text" placeholder="e.g. fmc003" class="inv-i"></div>
+        <div style="flex:2;min-width:150px;"><label class="inv-l" for="co-devs">Or device IDs</label><input id="co-devs" type="text" placeholder="6536476, 6605289" class="inv-i"></div>
+        <div style="flex:1;min-width:96px;"><label class="inv-l" for="co-calc">Calc ID</label><input id="co-calc" type="text" placeholder="optional" class="inv-i"></div>
+        <div style="min-width:74px;"><label class="inv-l" for="co-color">Colour</label><input id="co-color" type="text" placeholder="#7cb83e" class="inv-i"></div>
+        <button id="co-btn" type="submit" style="background:#7cb83e;color:#13260b;font-weight:700;font-size:13px;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;white-space:nowrap;">Add company</button>
+      </form>
+      <div id="co-msg" style="font-size:12px;margin-top:9px;display:none;"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:9px;line-height:1.5;">Define a company's fleet by a <b>Flespi group + device model</b> (auto-syncs as devices change) or by an explicit list of <b>device IDs</b>. Per-company trip scoring is connected as a follow-up &mdash; a new company appears in the switcher and stores its fleet now, showing live data once its feed is wired in.</div>
+    </div>
+    <div class="slabel">All companies</div>
+    <div id="admin-companies" style="max-width:560px;"></div>
   </div>
 </div>
 
