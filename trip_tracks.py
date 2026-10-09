@@ -162,7 +162,7 @@ def build(scores_path=None, cache_path=CACHE):
                     todo.append((key, tid, dev, v['plate'], slug, t['begin_ts'], t['end_ts']))
 
     print(f'trip_tracks: {len(todo)} new trips to process ({len(cache)} cached)')
-    for key, tid, dev, plate, slug, begin, end in todo:
+    for _n, (key, tid, dev, plate, slug, begin, end) in enumerate(todo, 1):
         try:
             msgs = fetch_messages(dev, begin, end)
             track, events = extract(msgs)
@@ -173,6 +173,11 @@ def build(scores_path=None, cache_path=CACHE):
             print(f'  #{tid} {plate}: {len(track)} pts, events brk/acc/crn/spd={ne["brk"]}/{ne["acc"]}/{ne["crn"]}/{ne["spd"]}')
         except Exception as e:
             print(f'  #{tid} {plate}: ERROR {e}')
+        # Checkpoint regularly: a large fleet can take longer than a run allows,
+        # and already-processed trips are skipped when it resumes.
+        if _n % 25 == 0:
+            json.dump(cache, open(cache_path, 'w'))
+            print(f'  ...checkpoint {_n}/{len(todo)} ({len(cache)} cached)')
 
     json.dump(cache, open(cache_path, 'w'))
     print(f'trip_tracks: cache now has {len(cache)} trips -> {cache_path}')
