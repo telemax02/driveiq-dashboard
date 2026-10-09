@@ -115,16 +115,24 @@ function renderRanking(){
     var d=_drAll[v.plate]||{};
     return ((v.plate||'')+' '+(v.make||'')+' '+(d.first||'')+' '+(d.last||'')).toLowerCase().indexOf(_q)>=0;
   });
-  if(_rankSort==='worst') list=list.slice().sort(function(a,b){ return (a.avg||0)-(b.avg||0); });
+  // Worst-first still keeps provisional vehicles below the established ones.
+  if(_rankSort==='worst') list=list.slice().sort(function(a,b){
+    var ap=a.provisional?1:0, bp=b.provisional?1:0;
+    return ap!==bp ? ap-bp : (a.avg||0)-(b.avg||0);
+  });
   var _cnt=document.getElementById('rank-count');
+  var _est=vehicles.filter(function(v){ return !v.provisional; }).length;
   if(_cnt) _cnt.textContent=(_q?list.length+' of '+vehicles.length+' vehicles':vehicles.length+' vehicles')
-    +(_rankSort==='worst'?' · worst first':'');
+    +' · '+_est+' ranked'+(_rankSort==='worst'?' · worst first':'');
   if(!list.length){ el.innerHTML='<div class="empty" style="font-size:12px;">No vehicles match that filter.</div>'; return; }
   list.forEach(function(v,i){
     const row=document.createElement('div');
     row.className='rank-row'+(sel===v.plate?' active':'');
-    var _rk=v.rank||(i+1);
-    const badge=_rk<=3?'<span style="font-size:15px;">'+M[_rk-1]+'</span>':'<span style="font-size:12px;font-weight:600;color:var(--text2);">#'+_rk+'</span>';
+    var _rk=v.rank;
+    const badge = (_rk==null)
+      ? '<span title="Provisional — not ranked until it has enough driving" style="font-size:12px;font-weight:600;color:var(--text3);">&ndash;</span>'
+      : (_rk<=3 ? '<span style="font-size:15px;">'+M[_rk-1]+'</span>'
+                : '<span style="font-size:12px;font-weight:600;color:var(--text2);">#'+_rk+'</span>');
     const ti=v.trend==='improving'
       ?'<i class="ti ti-trending-up" style="font-size:13px;color:var(--success);" title="Improving"></i>'
       :v.trend==='declining'
@@ -213,9 +221,11 @@ function selectV(plate){
     +'</div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
       +(v.rank===1?'<span style="font-size:22px;">🥇</span>':v.rank===2?'<span style="font-size:22px;">🥈</span>':v.rank===3?'<span style="font-size:22px;">🥉</span>':'')
-      +'<span style="font-size:11px;font-weight:500;color:var(--text2);">Fleet rank</span>'
-      +'<span style="font-size:18px;font-weight:500;">#'+v.rank+'</span>'
-      +'<span style="font-size:11px;color:var(--text2);">of '+vehicles.length+' vehicles</span>'
+      +(v.provisional
+         ? '<span title="Under 200km or fewer than 3 scored trips in the last 30 days — a single trip can still move this score a lot, so it is not ranked and is excluded from the fleet average." style="font-size:11px;font-weight:600;color:var(--info);cursor:help;">Provisional &mdash; not yet ranked</span>'
+         : '<span style="font-size:11px;font-weight:500;color:var(--text2);">Fleet rank</span>'
+           +'<span style="font-size:18px;font-weight:500;">#'+v.rank+'</span>'
+           +'<span style="font-size:11px;color:var(--text2);">of '+vehicles.filter(function(x){return !x.provisional;}).length+' ranked</span>')
       +trendBadge
       +'<div style="margin-left:auto;display:flex;gap:4px;align-items:center;">'
       +[['Speeding',v.spd_avg],['Braking',v.brk_avg],['Acceleration',v.acc_avg],['Cornering',v.crn_avg]].map(function(p){

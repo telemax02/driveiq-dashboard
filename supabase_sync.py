@@ -123,7 +123,10 @@ def _next_level(avg):
 def _enrich_vehicles(vehicles):
     """Compute rank, comp_avgs, trend and flatten for template JS.
     score_v2.py sorts vehicles but doesn't add these fields."""
-    sorted_vehs = sorted(vehicles, key=_precise_avg, reverse=True)
+    # Established vehicles rank first; provisional ones (too little driving for a
+    # settled score) follow and are left unranked, so a single-trip vehicle on a
+    # perfect 100 can't sit at the top of the leaderboard.
+    sorted_vehs = sorted(vehicles, key=lambda v: (bool(v.get('provisional')), -_precise_avg(v)))
 
     # Compute per-vehicle weekly scores to derive trend
     week_scores = {}  # plate -> {wk_ts -> score}
@@ -141,9 +144,14 @@ def _enrich_vehicles(vehicles):
     all_wks = sorted({wk for pw in week_scores.values() for wk in pw})
 
     out = []
+    _rank = 0
     for i, v in enumerate(sorted_vehs):
         vv = dict(v)
-        vv['rank'] = i + 1
+        if v.get('provisional'):
+            vv['rank'] = None          # not ranked until it has enough driving
+        else:
+            _rank += 1
+            vv['rank'] = _rank
         vv['avg'] = round(_precise_avg(v), 1)  # 1 decimal so near-ties are distinguishable
 
         # comp_avgs from trips
