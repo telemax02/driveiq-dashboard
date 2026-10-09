@@ -99,7 +99,10 @@ def score_fleet(calc, devs, makes):
     _base=[v for v in veh if not v['provisional']] or veh
     fa=round(sum(v['avg'] for v in _base)/len(_base)) if _base else 0
     return {'vehicles':veh,'incidents':inc,'fleet_avg':fa,'total_trips':sum(len(v['trips']) for v in veh),
-            'generated':datetime.datetime.utcnow().strftime('%d %b %Y %H:%M UTC'),'num_vehicles':len(veh)}
+            'generated':datetime.datetime.utcnow().strftime('%d %b %Y %H:%M UTC'),'num_vehicles':len(veh),
+            # plate -> Flespi device id, so trip_tracks.py can pull GPS paths for
+            # any company (it used to only know the hard-coded Telemax fleet).
+            'devices':{pl:did for did,pl in devs.items()}}
 
 # ── Company roster ──────────────────────────────────────────────────────────
 # Telemax uses its curated DEVS/MAKES; every other company is read from the

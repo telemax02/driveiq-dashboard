@@ -427,6 +427,36 @@ def sync_company_runs(scores_all_path):
               f'avg {data["fleet_avg"]} -> {status}')
 
 
+def sync_trip_tracks(base_dir):
+    """Upload cached GPS paths + event locations for every company, tagged with
+    their company so the per-company RLS policies let each tenant see its own
+    trip maps. Without this a company's trips render with no route drawn."""
+    path = os.path.join(base_dir, 'track_cache.json')
+    if not os.path.exists(path):
+        return
+    tc = json.load(open(path))
+    tracks = []
+    for k, v in tc.items():
+        tid = v.get('trip_id')
+        if tid is None:
+            try:
+                tid = int(str(k).split('|')[-1])
+            except (ValueError, TypeError):
+                continue
+        tracks.append({'trip_id': int(tid), 'plate': v.get('plate', ''),
+                       'company': v.get('company', 'telemax'),
+                       'track': v.get('track', []), 'events': v.get('events', [])})
+    if not tracks:
+        return
+    # The `company` column arrives with the Stage 2 migration; drop it if absent.
+    if (_rest('POST', 'trip_tracks', tracks[:1]) or 500) >= 400:
+        for t in tracks:
+            t.pop('company', None)
+        print('  trip_tracks: no `company` column yet — syncing untagged')
+    _batch_upsert('trip_tracks', tracks, chunk=20)
+    print(f'  trip_tracks: {len(tracks)} upserted')
+
+
 if __name__ == '__main__':
     BASE = os.path.dirname(os.path.abspath(__file__))
     print('Syncing per-company snapshots to Supabase...')
@@ -436,4 +466,5 @@ if __name__ == '__main__':
     else:
         # Fallback: legacy single-tenant sync (Telemax -> latest_run)
         sync(os.path.join(BASE, 'scores_only.json'))
+    sync_trip_tracks(BASE)
     print('Done.')

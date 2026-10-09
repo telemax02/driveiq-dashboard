@@ -134,29 +134,40 @@ def extract(msgs):
     return track, events
 
 
-def build(scores_path=SCORES, cache_path=CACHE):
-    d = json.load(open(scores_path))
+def build(scores_path=None, cache_path=CACHE):
+    """Pull GPS paths + event locations for EVERY company in scores_all.json.
+    Falls back to the legacy single-fleet scores_only.json when that's absent."""
+    all_path = scores_path or os.path.join(BASE, 'scores_all.json')
+    if os.path.exists(all_path):
+        companies = json.load(open(all_path))
+    else:
+        companies = {'telemax': json.load(open(SCORES))}
     cache = json.load(open(cache_path)) if os.path.exists(cache_path) else {}
 
     todo = []
-    for v in d['vehicles']:
-        dev = PLATE_TO_DEV.get(v['plate'])
-        if not dev:
-            continue
-        for t in v['trips']:
-            tid = str(t['id'])
-            key = f"{v['plate']}|{tid}"  # composite: interval ids collide across devices
-            if key in cache:
+    for slug, d in companies.items():
+        # plate -> device id comes from the company's own roster (score_v2 emits
+        # it); the hard-coded Telemax map is only a fallback.
+        p2d = {p: int(i) for p, i in (d.get('devices') or {}).items()} or PLATE_TO_DEV
+        for v in d.get('vehicles', []):
+            dev = p2d.get(v['plate'])
+            if not dev:
                 continue
-            if t.get('begin_ts') and t.get('end_ts'):
-                todo.append((key, tid, dev, v['plate'], t['begin_ts'], t['end_ts']))
+            for t in v.get('trips', []):
+                tid = str(t['id'])
+                key = f"{v['plate']}|{tid}"  # composite: interval ids collide across devices
+                if key in cache:
+                    continue
+                if t.get('begin_ts') and t.get('end_ts'):
+                    todo.append((key, tid, dev, v['plate'], slug, t['begin_ts'], t['end_ts']))
 
     print(f'trip_tracks: {len(todo)} new trips to process ({len(cache)} cached)')
-    for key, tid, dev, plate, begin, end in todo:
+    for key, tid, dev, plate, slug, begin, end in todo:
         try:
             msgs = fetch_messages(dev, begin, end)
             track, events = extract(msgs)
-            cache[key] = {'plate': plate, 'trip_id': int(tid), 'track': track, 'events': events}
+            cache[key] = {'plate': plate, 'trip_id': int(tid), 'company': slug,
+                          'track': track, 'events': events}
             ne = {'brk':0,'acc':0,'crn':0,'spd':0}
             for e in events: ne[e['type']] += 1
             print(f'  #{tid} {plate}: {len(track)} pts, events brk/acc/crn/spd={ne["brk"]}/{ne["acc"]}/{ne["crn"]}/{ne["spd"]}')
