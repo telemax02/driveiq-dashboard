@@ -27,6 +27,11 @@ jobs:
         env:
           FLESPI_TOKEN: ${{ secrets.FLESPI_TOKEN }}
           FLESPI_CALC_ID: ${{ secrets.FLESPI_CALC_ID }}
+          # score_v2.py reads the `companies` table to discover every company to
+          # score. Without these it silently falls back to Telemax only.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python score_v2.py
 
       - name: Geocode and build dashboard HTML

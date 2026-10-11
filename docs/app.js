@@ -26,6 +26,8 @@ function _clearAuthHash(){
 }
 var _linkExpiredShown=false; // true while the expired-link screen is showing with no session
 var currentUser=null, currentRole='user';
+// The company this user is scoped to (profiles.company_slug). null = unrestricted.
+var currentCompany=null;
 let _drCache={};
 function loadDrivers(){ return _drCache; }
 function saveDrivers(data){ _drCache=data; }
@@ -49,6 +51,15 @@ function cv(val){return val===null||val===undefined?'<span style="color:var(--te
 let vehicles=[];
 let incData=[];
 let weeksData=[];
+// ── Companies (multi-tenant) ──
+// _companies: all companies the signed-in user can see. _activeCompany: the one
+// currently shown. Both stay null/empty when the companies table doesn't exist
+// yet (pre-migration) or the user isn't invited — the app then behaves as before.
+let _companies=[];
+let _activeCompany=null;
+// Vehicle-ranking controls (filter text + best/worst ordering)
+let _rankQuery='';
+let _rankSort='best';
 
 // ── Tab switching ──────────────────────────────────────────────────────────
 function switchTab(tab){
@@ -57,15 +68,18 @@ function switchTab(tab){
   document.getElementById('view-drivers').style.display = tab==='drivers'?'':'none';
   document.getElementById('view-faq').style.display     = tab==='faq'?'':'none';
   document.getElementById('view-admin').style.display   = tab==='admin'?'':'none';
+  var _vi=document.getElementById('view-inc'); if(_vi) _vi.style.display = tab==='inc'?'':'none';
   document.getElementById('tab-dash').classList.toggle('active',    tab==='dash');
   document.getElementById('tab-lb').classList.toggle('active',      tab==='lb');
   document.getElementById('tab-drivers').classList.toggle('active', tab==='drivers');
   document.getElementById('tab-faq').classList.toggle('active',     tab==='faq');
   document.getElementById('tab-admin').classList.toggle('active',   tab==='admin');
+  var _ti=document.getElementById('tab-inc'); if(_ti) _ti.classList.toggle('active', tab==='inc');
   if(tab==='lb') renderLeaderboard();
   if(tab==='drivers') renderDrivers();
   if(tab==='dash') renderRanking();
-  if(tab==='admin') loadAdminUsers();
+  if(tab==='inc') renderIncidents();
+  if(tab==='admin'){ loadAdminUsers(); loadCompaniesAdmin(); }
   if(tab==='faq') setupFaqAccordion();
 }
 
@@ -91,12 +105,34 @@ function setupFaqAccordion(){
 // ── Dashboard ─────────────────────────────────────────────────────────────
 let sel=null;
 function renderRanking(){
+  if(!vehicles.length){ renderCompanyEmpty(); return; }
   const el=document.getElementById('ranking');el.innerHTML='';
   const M=['🥇','🥈','🥉'];
-  vehicles.forEach(function(v,i){
+  var _drAll=loadDrivers();
+  var _q=(_rankQuery||'').trim().toLowerCase();
+  var list=vehicles.filter(function(v){
+    if(!_q) return true;
+    var d=_drAll[v.plate]||{};
+    return ((v.plate||'')+' '+(v.make||'')+' '+(d.first||'')+' '+(d.last||'')).toLowerCase().indexOf(_q)>=0;
+  });
+  // Worst-first still keeps provisional vehicles below the established ones.
+  if(_rankSort==='worst') list=list.slice().sort(function(a,b){
+    var ap=a.provisional?1:0, bp=b.provisional?1:0;
+    return ap!==bp ? ap-bp : (a.avg||0)-(b.avg||0);
+  });
+  var _cnt=document.getElementById('rank-count');
+  var _est=vehicles.filter(function(v){ return !v.provisional; }).length;
+  if(_cnt) _cnt.textContent=(_q?list.length+' of '+vehicles.length+' vehicles':vehicles.length+' vehicles')
+    +' · '+_est+' ranked'+(_rankSort==='worst'?' · worst first':'');
+  if(!list.length){ el.innerHTML='<div class="empty" style="font-size:12px;">No vehicles match that filter.</div>'; return; }
+  list.forEach(function(v,i){
     const row=document.createElement('div');
     row.className='rank-row'+(sel===v.plate?' active':'');
-    const badge=i<3?'<span style="font-size:15px;">'+M[i]+'</span>':'<span style="font-size:12px;font-weight:600;color:var(--text2);">#'+(i+1)+'</span>';
+    var _rk=v.rank;
+    const badge = (_rk==null)
+      ? '<span title="Provisional — not ranked until it has enough driving" style="font-size:12px;font-weight:600;color:var(--text3);">&ndash;</span>'
+      : (_rk<=3 ? '<span style="font-size:15px;">'+M[_rk-1]+'</span>'
+                : '<span style="font-size:12px;font-weight:600;color:var(--text2);">#'+_rk+'</span>');
     const ti=v.trend==='improving'
       ?'<i class="ti ti-trending-up" style="font-size:13px;color:var(--success);" title="Improving"></i>'
       :v.trend==='declining'
@@ -112,7 +148,8 @@ function renderRanking(){
           (dName
             ? '<span style="font-size:12px;font-weight:600;">'+dName+'</span>'
             : '<span style="font-size:11px;font-weight:500;">'+v.plate+'</span>')+
-          (v.low_cov?'<span style="font-size:9px;color:var(--warning);">low cov</span>':'')+
+          (v.low_cov?'<span title="Speed-limit coverage under 60% — speeding was only partially measured on this vehicle&#39;s trips, so the scoring weight shifts to braking, acceleration and cornering." style="font-size:9px;color:var(--warning);cursor:help;border-bottom:1px dotted var(--warning);">low cov</span>':'')+
+          (v.provisional?'<span title="Provisional: under 200km or fewer than 3 scored trips in the last 30 days, so a single trip can still move this score a lot. It settles as more driving is recorded, and it is excluded from the fleet average." style="font-size:9px;color:var(--info);cursor:help;border-bottom:1px dotted var(--info);">provisional</span>':'')+
         '</div>'+
         (dName?'<div style="font-size:11px;color:var(--text2);margin-bottom:2px;">'+v.plate+' &middot; '+v.make+'</div>':
                 '<div style="font-size:11px;color:var(--text2);margin-bottom:2px;">'+v.make+'</div>')+
@@ -184,9 +221,11 @@ function selectV(plate){
     +'</div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
       +(v.rank===1?'<span style="font-size:22px;">🥇</span>':v.rank===2?'<span style="font-size:22px;">🥈</span>':v.rank===3?'<span style="font-size:22px;">🥉</span>':'')
-      +'<span style="font-size:11px;font-weight:500;color:var(--text2);">Fleet rank</span>'
-      +'<span style="font-size:18px;font-weight:500;">#'+v.rank+'</span>'
-      +'<span style="font-size:11px;color:var(--text2);">of '+vehicles.length+' vehicles</span>'
+      +(v.provisional
+         ? '<span title="Under 200km or fewer than 3 scored trips in the last 30 days — a single trip can still move this score a lot, so it is not ranked and is excluded from the fleet average." style="font-size:11px;font-weight:600;color:var(--info);cursor:help;">Provisional &mdash; not yet ranked</span>'
+         : '<span style="font-size:11px;font-weight:500;color:var(--text2);">Fleet rank</span>'
+           +'<span style="font-size:18px;font-weight:500;">#'+v.rank+'</span>'
+           +'<span style="font-size:11px;color:var(--text2);">of '+vehicles.filter(function(x){return !x.provisional;}).length+' ranked</span>')
       +trendBadge
       +'<div style="margin-left:auto;display:flex;gap:4px;align-items:center;">'
       +[['Speeding',v.spd_avg],['Braking',v.brk_avg],['Acceleration',v.acc_avg],['Cornering',v.crn_avg]].map(function(p){
@@ -219,11 +258,13 @@ function selectV(plate){
                :sz==='long'?'<span class="tag tl" style="margin-left:4px;" data-tip="Long trip: 25km or more">Long trip</span>'
                :'<span class="tag" style="margin-left:4px;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);" data-tip="Standard trip: 10–24km">Standard</span>';
     const rpmTag=t.rpm_s>3?'<span class="tag" style="margin-left:4px;background:#3b0764;color:#d8b4fe;">⚡ High RPM</span>':'';
+    // Confirmed speeding incident on this trip — call it out so it's findable while browsing.
+    const incTag=t.incident?'<span class="tag" style="margin-left:4px;background:var(--danger-bg);color:var(--danger);font-weight:600;" data-tip="Confirmed speeding incident: 20+ km/h over the limit for 30s or more">&#9888; Incident'+(t.inc_mx?' +'+Math.round(t.inc_mx)+' km/h':'')+'</span>':'';
     const parts=t.t.split('→');
     const startTime=parts[0]||t.t;
     const endTime=parts[1]||'';
     const mapId='trip-map-'+t.id;
-    const card=document.createElement('div');card.className='trip-card';
+    const card=document.createElement('div');card.className='trip-card';card.id='trip-'+t.id;
     card.style.cssText='display:flex;gap:12px;align-items:stretch;';
     const infoDiv=document.createElement('div');infoDiv.style.cssText='flex:1;min-width:0;';
     infoDiv.innerHTML=
@@ -233,7 +274,7 @@ function selectV(plate){
             +'<span style="font-size:13px;font-weight:600;color:var(--text);">'+(t.date||'')+'</span>'
             +'<span style="font-size:12px;color:var(--text2);">'+startTime+(endTime?' &rarr; '+endTime:'')+'</span>'
             +'<span style="font-size:11px;color:var(--text2);">&middot; '+t.km+'km</span>'
-            +szTag+rpmTag
+            +szTag+rpmTag+incTag
           +'</div>'
           +(t.from?'<div style="font-size:11px;color:var(--text3);margin-top:4px;"><i class="ti ti-map-pin" style="font-size:10px;vertical-align:-1px;color:var(--info);"></i> <span style="color:var(--text2);">'+t.from+'</span>'+(t.to?' &rarr; <span style="color:var(--text2);">'+t.to+'</span>':'')+'</div>':'')
         +'</div>'
@@ -492,16 +533,28 @@ function renderFleetInsight(fi){
 
 
 
-var _lastUpdatedAt=null;
+var _lastUpdatedAt=null, _lastSlug=null;
 async function loadDashboardData(){
-  var res=await _sb.from('latest_run').select('data, updated_at').eq('id',1).single();
-  if(res.error||!res.data){ console.error('Failed to load data',res.error); return; }
-  if(_lastUpdatedAt&&res.data.updated_at===_lastUpdatedAt) return;
-  _lastUpdatedAt=res.data.updated_at;
+  // Each company has its own scored snapshot in company_runs (keyed by slug);
+  // the default company falls back to 'telemax'. A company with no snapshot yet
+  // shows the awaiting-data state (rendered by renderRanking).
+  var slug=(_activeCompany&&_activeCompany.slug)?_activeCompany.slug:'telemax';
+  var res=await _sb.from('company_runs').select('data, updated_at').eq('company_slug',slug).maybeSingle();
+  // Telemax safety net: if company_runs isn't populated yet (pre-migration),
+  // fall back to the legacy single-tenant latest_run so the dashboard never breaks.
+  if((res.error||!res.data) && slug==='telemax'){
+    var lr=await _sb.from('latest_run').select('data, updated_at').eq('id',1).maybeSingle();
+    if(lr&&lr.data) res=lr;
+  }
+  if(res.error&&!res.data){ console.error('Failed to load data',res.error); return; }
+  if(!res.data){ vehicles=[]; incData=[]; weeksData=[]; _lastUpdatedAt=null; _lastSlug=slug; updateIncCount(); return; }
+  if(_lastUpdatedAt&&res.data.updated_at===_lastUpdatedAt&&_lastSlug===slug) return;
+  _lastUpdatedAt=res.data.updated_at; _lastSlug=slug;
   var d=res.data.data;
   vehicles=d.vehicles||[];
   incData=d.incidents||[];
   weeksData=d.weeks||[];
+  updateIncCount();
   // Stat cards
   var fa=d.fleet_avg||0, ft=d.fleet_trend||0;
   document.getElementById('s-avg').textContent=fmt1(fa);
@@ -512,8 +565,10 @@ async function loadDashboardData(){
   var upEl=document.getElementById('s-updated');
   if(upEl&&res.data.updated_at){
     var dt=new Date(res.data.updated_at);
-    upEl.textContent=dt.toLocaleDateString([],{day:'2-digit',month:'short',year:'numeric'})
+    // Compact: "09 Oct 06:47" (the year is implied and was wrapping the header).
+    upEl.textContent=dt.toLocaleDateString([],{day:'2-digit',month:'short'})
       +' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    upEl.title=dt.toLocaleString();
   }
   // Recalculate leaderboard week index
   var now=Date.now()/1000;
@@ -526,7 +581,10 @@ async function loadDashboardData(){
 var _appStarted=false;
 function startApp(){
   if(_appStarted) return; _appStarted=true;
-  Promise.all([initDrivers(),loadDashboardData()]).then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
+  // Companies must resolve first so loadDashboardData knows which fleet to show.
+  initCompanies().then(function(){
+    return Promise.all([initDrivers(),loadDashboardData()]);
+  }).then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
   setInterval(function(){ loadDashboardData().then(function(){ renderRanking(); }); }, 5*60*1000);
 }
 function showLogin(){
@@ -544,8 +602,10 @@ async function showApp(){
   document.getElementById('login-view').style.display='none';
   document.getElementById('setpw-view').style.display='none';
   document.getElementById('app-root').style.display='block';
+  // Role + company must be known BEFORE startApp(), so initCompanies can scope
+  // a company-restricted user to their own company from the very first render.
+  await loadRole();
   startApp();
-  loadRole();
   recordLogin();
 }
 var _loginRecorded=false;
@@ -698,10 +758,13 @@ async function loadRole(){
   try{
     var u=await _sb.auth.getUser(); currentUser=(u&&u.data&&u.data.user)||null;
     if(currentUser){
-      var r=await _sb.from('profiles').select('role').eq('id',currentUser.id).maybeSingle();
+      // company_slug may not exist until the Stage 2 migration runs — fall back.
+      var r=await _sb.from('profiles').select('role, company_slug').eq('id',currentUser.id).maybeSingle();
+      if(r&&r.error){ r=await _sb.from('profiles').select('role').eq('id',currentUser.id).maybeSingle(); }
       currentRole=(r&&r.data&&r.data.role)||'user';
+      currentCompany=(r&&r.data&&r.data.company_slug)||null;
     }
-  }catch(e){ currentRole='user'; }
+  }catch(e){ currentRole='user'; currentCompany=null; }
   applyRoleUI();
 }
 function applyRoleUI(){
@@ -734,6 +797,7 @@ function _adminMsg(text,color){
 var _adminUsersCache=null, _editUserId=null;
 async function loadAdminUsers(){
   var el=document.getElementById('admin-users'); if(!el) return;
+  await loadProfileCompanies();   // so the Company column renders with real values
   // Cache: render the last-known list instantly, then refresh in the background
   // and only re-render if it actually changed (so it loads quick and doesn't
   // wipe an in-progress edit on every tab switch).
@@ -758,10 +822,38 @@ function _fmtLogin(ts){
   return d.getDate()+' '+mon+' '+(''+d.getFullYear()).slice(2)+', '+h+':'+(m<10?'0':'')+m+ap;
 }
 function _splitName(nm){ var p=(nm||'').trim().split(/\s+/).filter(Boolean); var f=p.shift()||''; return {first:f, last:p.join(' ')}; }
+// ── Per-user company scoping (profiles.company_slug) ───────────────────────
+// Admins already hold profiles_read / profiles_admin_update, so assigning a
+// user to a company is a direct table update — no edge function needed.
+var _profCompany={};
+async function loadProfileCompanies(){
+  try{
+    var r=await _sb.from('profiles').select('id, company_slug');
+    _profCompany={};
+    (r.data||[]).forEach(function(p){ _profCompany[p.id]=p.company_slug||''; });
+  }catch(e){ /* column absent until the Stage 2 migration is run */ }
+}
+function _companyCell(u){
+  var cur=_profCompany[u.id]||'';
+  var opts='<option value=""'+(cur===''?' selected':'')+'>All companies</option>'
+    +_companies.map(function(c){
+       return '<option value="'+esc(c.slug)+'"'+(cur===c.slug?' selected':'')+'>'+esc(c.name)+'</option>';
+     }).join('');
+  return '<select title="Which company this user can see (All = unrestricted)" '
+    +'onchange="setUserCompany(\''+u.id+'\',this.value)">'+opts+'</select>';
+}
+async function setUserCompany(id, slug){
+  var res=await _sb.from('profiles').update({company_slug: slug||null}).eq('id', id);
+  if(res&&res.error){ _adminMsg('Could not set company access: '+esc(res.error.message),'var(--danger)'); return; }
+  _profCompany[id]=slug||'';
+  var c=_companies.find(function(x){ return x.slug===slug; });
+  _adminMsg('Company access updated — '+(c?c.name:'all companies')+'.','var(--success)');
+}
+
 function renderAdminUsers(users){
   var el=document.getElementById('admin-users');
   if(!users.length){ el.innerHTML='<div class="empty">No users yet.</div>'; return; }
-  var head='<div class="au-head"><span>Email</span><span>First name</span><span>Last name</span><span>Role</span><span>Status</span><span>Last login</span><span>Actions</span></div>';
+  var head='<div class="au-head"><span>Email</span><span>First name</span><span>Last name</span><span>Role</span><span>Company access</span><span>Status</span><span>Last login</span><span>Actions</span></div>';
   el.innerHTML=head+users.map(function(u){
     var isMe=currentUser&&u.id===currentUser.id, pending=!u.confirmed, nm=_splitName(u.name);
     var status='<span class="tag" style="background:'+(pending?'var(--warning-bg)':'var(--success-bg)')+';color:'+(pending?'var(--warning)':'var(--success)')+';">'+(pending?'pending':'active')+'</span>';
@@ -776,6 +868,7 @@ function renderAdminUsers(users){
           +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
           +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
         +'</select>'
+        +_companyCell(u)
         +statusCell
         +loginCell
         +'<div class="au-actions">'
@@ -792,6 +885,7 @@ function renderAdminUsers(users){
         +'<div class="au-cell">'+(nm.first?esc(nm.first):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
         +'<div class="au-cell">'+(nm.last?esc(nm.last):'<span style="color:var(--text3);">&mdash;</span>')+'</div>'
         +'<div>'+roleBadge+'</div>'
+        +_companyCell(u)
         +statusCell
         +loginCellRO
         +'<div class="au-actions">'
@@ -1133,4 +1227,214 @@ function importDrivers(evt){
   };
   reader.readAsText(file);
   evt.target.value = '';
+}
+
+// ── Companies (multi-tenant foundation) ─────────────────────────────────────
+// Load the companies list and pick the active one (saved choice → default →
+// first). Fails soft: if the table doesn't exist yet or the read errors, the
+// app keeps working as a single fleet.
+async function initCompanies(){
+  try{
+    var res=await _sb.from('companies').select('*').order('is_default',{ascending:false}).order('name');
+    _companies=(res&&res.data)||[];
+  }catch(e){ _companies=[]; }
+  // A company-scoped user only ever sees their own company. RLS enforces this
+  // server-side as well; this keeps the UI consistent with it.
+  if(currentCompany && currentRole!=='admin'){
+    _companies=_companies.filter(function(c){ return c.slug===currentCompany; });
+  }
+  var saved=null; try{ saved=localStorage.getItem('diq_company'); }catch(e){}
+  _activeCompany = (currentCompany ? _companies.find(function(c){return c.slug===currentCompany;}) : null)
+                || _companies.find(function(c){return c.slug===saved;})
+                || _companies.find(function(c){return c.is_default;})
+                || _companies[0] || null;
+  renderCompanySwitch();
+}
+function renderCompanySwitch(){
+  var el=document.getElementById('company-switch'); if(!el) return;
+  if(!_companies.length){ el.style.display='none'; return; }
+  el.style.display='';
+  el.innerHTML=_companies.map(function(c){
+    return '<option value="'+esc(c.slug)+'"'+(_activeCompany&&c.slug===_activeCompany.slug?' selected':'')+'>'+esc(c.name)+'</option>';
+  }).join('');
+  // Scoped users can't switch — render their company as a static label instead.
+  var locked = !!currentCompany && currentRole!=='admin';
+  el.classList.toggle('locked', locked);
+  el.title = locked ? 'Your dashboard' : 'Select company';
+}
+function switchCompany(slug){
+  var c=_companies.find(function(x){return x.slug===slug;}); if(!c) return;
+  _activeCompany=c; sel=null;
+  try{ localStorage.setItem('diq_company',slug); }catch(e){}
+  _lastUpdatedAt=null; // force a fresh load for the newly selected company
+  loadDashboardData().then(function(){
+    renderRanking();
+    if(vehicles.length>0) selectV(vehicles[0].plate);
+  });
+}
+// Shown when a non-default company (no scored data yet) is selected.
+function renderCompanyEmpty(){
+  var nm=_activeCompany?esc(_activeCompany.name):'this company';
+  var r=document.getElementById('ranking');
+  if(r) r.innerHTML='<div class="empty" style="text-align:left;line-height:1.6;">'
+    +'<i class="ti ti-clock-hour-4" style="font-size:18px;display:block;margin-bottom:8px;"></i>'
+    +'No trips scored yet for <b>'+nm+'</b>.<br>'
+    +'<span style="font-size:11px;color:var(--text3);">This company\'s telematics feed isn\'t connected to scoring yet.</span></div>';
+  var a=document.getElementById('s-avg'); if(a) a.textContent='—';
+  var st=document.getElementById('s-stars'); if(st) st.innerHTML='';
+  var tp=document.getElementById('s-trips'); if(tp) tp.textContent='';
+  var tb=document.getElementById('tier-breakdown'); if(tb) tb.innerHTML='';
+  var tl=document.getElementById('trip-label'); if(tl) tl.textContent='Select a vehicle';
+  var vs=document.getElementById('vehicle-summary'); if(vs) vs.innerHTML='';
+  var tr=document.getElementById('trips'); if(tr) tr.innerHTML='<div class="empty">No data for this company yet.</div>';
+}
+
+// ── Admin: company management (mirrors the driver in-browser CRUD) ───────────
+function _coMsg(text,color){ var m=document.getElementById('co-msg'); if(!m) return; m.textContent=text; m.style.color=color||'var(--text2)'; m.style.display='block'; }
+async function loadCompaniesAdmin(){
+  try{
+    var res=await _sb.from('companies').select('*').order('is_default',{ascending:false}).order('name');
+    if(res&&res.data) _companies=res.data;
+  }catch(e){}
+  renderCompanySwitch();
+  renderCompaniesAdmin();
+}
+function renderCompaniesAdmin(){
+  var el=document.getElementById('admin-companies'); if(!el) return;
+  if(!_companies.length){ el.innerHTML='<div class="empty">No companies yet. Add one above.</div>'; return; }
+  el.innerHTML=_companies.map(function(c){
+    var devs=Array.isArray(c.flespi_device_ids)?c.flespi_device_ids.length:0;
+    // Fleet description: group + model when defined that way, else an explicit device count.
+    var fleet = devs>0
+      ? (devs+' device'+(devs===1?'':'s')+(c.flespi_group_id?(' · from group '+esc(c.flespi_group_id)+(c.device_type?('/'+esc(c.device_type)):'')):''))
+      : (c.flespi_group_id
+          ? ('group '+esc(c.flespi_group_id)+(c.device_type?(' · '+esc(c.device_type)):''))
+          : '0 devices');
+    var badge=c.is_default?'<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:var(--info-bg);color:var(--info);margin-left:6px;vertical-align:1px;">DEFAULT</span>':'';
+    var del=c.is_default?'':'<button onclick="deleteCompany(\''+esc(c.id)+'\')" title="Remove company" aria-label="Remove company" style="background:var(--bg3);border:0.5px solid var(--border);color:var(--danger);border-radius:6px;padding:5px 9px;font-size:13px;cursor:pointer;"><i class="ti ti-trash"></i></button>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;margin-bottom:6px;">'
+      +'<div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--text);">'+esc(c.name)+badge+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+fleet+(c.flespi_calc_id?(' · calc '+esc(c.flespi_calc_id)):'')+' · '+esc(c.slug)+'</div></div>'
+      +del+'</div>';
+  }).join('');
+}
+async function addCompany(ev){
+  if(ev&&ev.preventDefault) ev.preventDefault();
+  var nameEl=document.getElementById('co-name'), devEl=document.getElementById('co-devs'),
+      calcEl=document.getElementById('co-calc'), colEl=document.getElementById('co-color'),
+      grpEl=document.getElementById('co-group'), typeEl=document.getElementById('co-type');
+  var name=((nameEl&&nameEl.value)||'').trim();
+  if(!name){ _coMsg('Company name is required.','var(--danger)'); return; }
+  var slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  if(!slug){ _coMsg('Please use letters or numbers in the name.','var(--danger)'); return; }
+  if(_companies.some(function(c){return c.slug===slug;})){ _coMsg('A company with a similar name already exists.','var(--danger)'); return; }
+  var devs=((devEl&&devEl.value)||'').split(/[\s,]+/).map(function(s){return s.trim();}).filter(Boolean);
+  var payload={slug:slug,name:name,flespi_device_ids:devs,
+    flespi_group_id:((grpEl&&grpEl.value)||'').trim(),device_type:((typeEl&&typeEl.value)||'').trim().toLowerCase(),
+    flespi_calc_id:((calcEl&&calcEl.value)||'').trim(),color:((colEl&&colEl.value)||'').trim()};
+  var res=await _sb.from('companies').insert(payload);
+  if(res&&res.error){ _coMsg('Could not add company: '+esc(res.error.message),'var(--danger)'); return; }
+  [nameEl,devEl,calcEl,colEl,grpEl,typeEl].forEach(function(el){ if(el) el.value=''; });
+  _coMsg('Company “'+name+'” added.','var(--success)');
+  await loadCompaniesAdmin();
+}
+async function deleteCompany(id){
+  var c=_companies.find(function(x){return x.id===id;});
+  if(!c || c.is_default) return;
+  if(!confirm('Remove company “'+c.name+'”? Its saved settings will be deleted.')) return;
+  var res=await _sb.from('companies').delete().eq('id',id);
+  if(res&&res.error){ _coMsg('Could not remove company: '+esc(res.error.message),'var(--danger)'); return; }
+  var wasActive=_activeCompany&&_activeCompany.id===id;
+  if(wasActive){ _activeCompany=null; try{ localStorage.removeItem('diq_company'); }catch(e){} }
+  await loadCompaniesAdmin();
+  if(wasActive){
+    _activeCompany=_companies.find(function(x){return x.is_default;})||_companies[0]||null;
+    renderCompanySwitch();
+    _lastUpdatedAt=null;
+    loadDashboardData().then(function(){ renderRanking(); if(vehicles.length>0)selectV(vehicles[0].plate); });
+  }
+}
+
+// ── Vehicle-ranking controls (filter + best/worst ordering) ─────────────────
+function setRankQuery(q){ _rankQuery=q||''; renderRanking(); }
+function toggleRankSort(){
+  _rankSort = (_rankSort==='best') ? 'worst' : 'best';
+  var b=document.getElementById('rank-sort-btn');
+  if(b) b.textContent = (_rankSort==='best') ? 'Best first' : 'Worst first';
+  renderRanking();
+}
+
+// ── Incidents ───────────────────────────────────────────────────────────────
+// Confirmed speeding incidents: >=20 km/h over the limit, >=30s, >=70% coverage.
+function updateIncCount(){
+  var b=document.getElementById('inc-count'); if(!b) return;
+  var n=(incData||[]).length;
+  b.textContent=n; b.style.display = n ? '' : 'none';
+}
+function _fmtDur(s){ s=Math.round(s||0); return s<60 ? s+'s' : Math.floor(s/60)+'m '+(s%60)+'s'; }
+function renderIncidents(){
+  updateIncCount();
+  var el=document.getElementById('inc-list'); if(!el) return;
+  var list=(incData||[]).slice().sort(function(a,b){ return (b.mx||0)-(a.mx||0); });
+  if(!list.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-shield-check" style="font-size:18px;display:block;margin-bottom:8px;color:var(--success);"></i>No confirmed speeding incidents for this company.</div>';
+    return;
+  }
+  el.innerHTML=list.map(function(x){
+    var mx=Math.round(x.mx||0);
+    var sev = mx>=40 ? 'var(--danger)' : (mx>=30 ? 'var(--warning)' : 'var(--text)');
+    var tid=String(x.trip||'').replace(/^#/,'');   // incidents store the trip as "#<id>"
+    return '<div class="inc-row" title="Open this trip" onclick="focusTrip(\''+esc(x.plate)+'\',\''+esc(tid)+'\')">'
+      +'<div style="min-width:0;"><div style="font-weight:600;">'+esc(x.plate)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);">'+esc(x.make||'')+'</div></div>'
+      +'<div><div>'+esc(x.date||'')+'</div><div style="font-size:11px;color:var(--text3);">'+esc(x.time||'')+'</div></div>'
+      +'<div class="right" style="font-weight:600;color:'+sev+';">+'+mx+' km/h</div>'
+      +'<div class="right">'+_fmtDur(x.dur)+'</div>'
+      +'<div class="right inc-hide-m">+'+(x.avg||0)+' km/h</div>'
+      +'<div class="inc-hide-m" style="font-size:11px;color:var(--text2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(x.loc||'—')+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// Jump from an incident straight to the exact trip that caused it: open the
+// vehicle, scroll that trip into view and keep it highlighted so it's obvious.
+function focusTrip(plate, tripId){
+  switchTab('dash');
+  selectV(plate);
+  setTimeout(function(){
+    Array.prototype.forEach.call(document.querySelectorAll('.trip-card.trip-focus'),
+      function(n){ n.classList.remove('trip-focus'); });
+    var card=document.getElementById('trip-'+tripId);
+    if(!card){ return; }   // trip outside the scored window — vehicle is still opened
+    card.classList.add('trip-focus');
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 60);
+}
+
+// ── CSV export ──────────────────────────────────────────────────────────────
+function _csvCell(c){ c=(c==null?'':String(c)); return /[",\n]/.test(c) ? '"'+c.replace(/"/g,'""')+'"' : c; }
+function _downloadCsv(filename, rows){
+  var csv=rows.map(function(r){ return r.map(_csvCell).join(','); }).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+}
+function _companyTag(){ return (_activeCompany&&_activeCompany.slug)||'fleet'; }
+function exportRanking(){
+  var drAll=loadDrivers();
+  var rows=[['Rank','Rego','Make/Model','Driver','Score','Speeding','Braking','Acceleration','Cornering','Trips','Avg GPS coverage %','Low coverage','Trend']];
+  vehicles.forEach(function(v,i){
+    var d=drAll[v.plate]||{}, ca=v.comp_avgs||{};
+    var nm=((d.first||'').trim()+' '+((d.last||'').trim()?(d.last||'').trim().toUpperCase()+'.':'')).trim();
+    rows.push([v.rank||(i+1), v.plate, v.make||'', nm, v.avg, (ca.spd==null?'':ca.spd), ca.brk, ca.acc, ca.crn,
+               (v.trips||[]).length, v.avg_cov, v.low_cov?'yes':'no', v.trend||'']);
+  });
+  _downloadCsv('driveiq_'+_companyTag()+'_ranking.csv', rows);
+}
+function exportIncidents(){
+  var rows=[['Rego','Make/Model','Date','Time','Peak over limit (km/h)','Duration (s)','Avg over limit (km/h)','Location']];
+  (incData||[]).slice().sort(function(a,b){ return (b.mx||0)-(a.mx||0); }).forEach(function(x){
+    rows.push([x.plate, x.make||'', x.date||'', x.time||'', Math.round(x.mx||0), Math.round(x.dur||0), x.avg||0, x.loc||'']);
+  });
+  _downloadCsv('driveiq_'+_companyTag()+'_incidents.csv', rows);
 }
