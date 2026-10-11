@@ -26,8 +26,10 @@ function _clearAuthHash(){
 }
 var _linkExpiredShown=false; // true while the expired-link screen is showing with no session
 var currentUser=null, currentRole='user';
-// The company this user is scoped to (profiles.company_slug). null = unrestricted.
-var currentCompany=null;
+// The companies this user may see (profiles.company_slugs). null = not scoped,
+// which the RLS policies read as Telemax only. currentCompany is kept as the
+// first of the set purely for the existing single-company call sites.
+var currentCompany=null, currentCompanies=null;
 let _drCache={};
 function loadDrivers(){ return _drCache; }
 function saveDrivers(data){ _drCache=data; }
@@ -754,17 +756,30 @@ async function doSetPassword(ev){
 async function doLogout(){ try{ await _sb.auth.signOut(); }catch(e){} location.reload(); }
 
 // ── Roles ────────────────────────────────────────────────────────────────
+// A profiles row -> the companies that user may see, or null when they aren't
+// scoped at all (RLS reads that as Telemax only). company_slugs is the set;
+// company_slug is Stage 2's single value, kept as a fallback.
+function _companySet(p){
+  var s=p&&p.company_slugs;
+  if(Array.isArray(s)&&s.length) return s.slice();
+  if(p&&p.company_slug) return [p.company_slug];
+  return null;
+}
 async function loadRole(){
   try{
     var u=await _sb.auth.getUser(); currentUser=(u&&u.data&&u.data.user)||null;
     if(currentUser){
-      // company_slug may not exist until the Stage 2 migration runs — fall back.
-      var r=await _sb.from('profiles').select('role, company_slug').eq('id',currentUser.id).maybeSingle();
+      // Each column only exists once its migration has run, so step down a
+      // column at a time rather than failing the whole read.
+      var r=await _sb.from('profiles').select('role, company_slug, company_slugs').eq('id',currentUser.id).maybeSingle();
+      if(r&&r.error){ r=await _sb.from('profiles').select('role, company_slug').eq('id',currentUser.id).maybeSingle(); }
       if(r&&r.error){ r=await _sb.from('profiles').select('role').eq('id',currentUser.id).maybeSingle(); }
-      currentRole=(r&&r.data&&r.data.role)||'user';
-      currentCompany=(r&&r.data&&r.data.company_slug)||null;
+      var d=(r&&r.data)||{};
+      currentRole=d.role||'user';
+      currentCompanies=_companySet(d);
+      currentCompany=currentCompanies?currentCompanies[0]:null;
     }
-  }catch(e){ currentRole='user'; currentCompany=null; }
+  }catch(e){ currentRole='user'; currentCompany=null; currentCompanies=null; }
   applyRoleUI();
 }
 function applyRoleUI(){
@@ -825,29 +840,67 @@ function _splitName(nm){ var p=(nm||'').trim().split(/\s+/).filter(Boolean); var
 // ── Per-user company scoping (profiles.company_slug) ───────────────────────
 // Admins already hold profiles_read / profiles_admin_update, so assigning a
 // user to a company is a direct table update — no edge function needed.
-var _profCompany={};
+var _profCompanies={};
 async function loadProfileCompanies(){
   try{
-    var r=await _sb.from('profiles').select('id, company_slug');
-    _profCompany={};
-    (r.data||[]).forEach(function(p){ _profCompany[p.id]=p.company_slug||''; });
-  }catch(e){ /* column absent until the Stage 2 migration is run */ }
+    var r=await _sb.from('profiles').select('id, company_slug, company_slugs');
+    if(r&&r.error) r=await _sb.from('profiles').select('id, company_slug');
+    if(r&&r.error) return;   // columns absent until the access migrations run
+    _profCompanies={};
+    (r.data||[]).forEach(function(p){ _profCompanies[p.id]=_companySet(p); });
+  }catch(e){ /* leave the last-known map in place */ }
 }
-function _companyCell(u){
-  var cur=_profCompany[u.id]||'';
-  var opts='<option value=""'+(cur===''?' selected':'')+'>All companies</option>'
-    +_companies.map(function(c){
-       return '<option value="'+esc(c.slug)+'"'+(cur===c.slug?' selected':'')+'>'+esc(c.name)+'</option>';
-     }).join('');
-  return '<select title="Which company this user can see (All = unrestricted)" '
-    +'onchange="setUserCompany(\''+u.id+'\',this.value)">'+opts+'</select>';
+function _companyNames(set){
+  return set.map(function(s){
+    var c=_companies.find(function(x){ return x.slug===s; });
+    return c?c.name:s;
+  });
 }
-async function setUserCompany(id, slug){
-  var res=await _sb.from('profiles').update({company_slug: slug||null}).eq('id', id);
+// The cell is a summary; the checkboxes live in a full-width panel below the
+// row. A popover would be clipped by the admin grid's horizontal scroll.
+function _companyLabel(u){
+  var set=_profCompanies[u.id];
+  if(!set||!set.length) return 'Telemax <span style="color:var(--text3);">(default)</span>';
+  if(_companies.length && set.length>=_companies.length) return 'All companies';
+  var names=_companyNames(set);
+  return esc(names[0])+(names.length>1?' <span style="color:var(--text3);">+'+(names.length-1)+'</span>':'');
+}
+function _companyCell(u, readonly){
+  if(readonly) return '<div class="au-cell">'+_companyLabel(u)+'</div>';
+  return '<div class="au-cell"><button class="au-btn" style="width:100%;text-align:left;" '
+    +'title="Which companies this user can see" onclick="toggleCompanyPanel(\''+u.id+'\')">'
+    +_companyLabel(u)+' <span style="color:var(--text3);font-size:9px;">&#9662;</span></button></div>';
+}
+function _companyPanel(u){
+  var set=_profCompanies[u.id]||[];
+  var boxes=_companies.map(function(c){
+    return '<label style="margin-right:14px;white-space:nowrap;cursor:pointer;">'
+      +'<input type="checkbox" value="'+esc(c.slug)+'"'+(set.indexOf(c.slug)>=0?' checked':'')
+      +' style="vertical-align:-1px;margin-right:4px;">'+esc(c.name)+'</label>';
+  }).join('');
+  return '<div class="au-detail au-copanel" id="au-co-'+u.id+'" style="display:none;">'
+    +'<span id="au-co-boxes-'+u.id+'">'+boxes+'</span>'
+    +'<button class="au-btn save" onclick="saveUserCompanies(\''+u.id+'\')">Save access</button>'
+    +'<div style="color:var(--text3);font-size:10.5px;margin-top:5px;">'
+    +'Nothing ticked = Telemax only. Admins always see every company.</div>'
+  +'</div>';
+}
+function toggleCompanyPanel(id){
+  var d=document.getElementById('au-co-'+id); if(!d) return;
+  d.style.display = d.style.display==='none' ? '' : 'none';
+}
+async function saveUserCompanies(id){
+  var box=document.getElementById('au-co-boxes-'+id); if(!box) return;
+  var slugs=[].slice.call(box.querySelectorAll('input:checked')).map(function(i){ return i.value; });
+  // Keep Stage 2's company_slug in step so a stale client (or user_companies()'s
+  // fallback) can't resurrect an access level the admin just revoked.
+  var res=await _sb.from('profiles')
+    .update({company_slugs: slugs.length?slugs:null, company_slug: slugs.length===1?slugs[0]:null})
+    .eq('id', id);
   if(res&&res.error){ _adminMsg('Could not set company access: '+esc(res.error.message),'var(--danger)'); return; }
-  _profCompany[id]=slug||'';
-  var c=_companies.find(function(x){ return x.slug===slug; });
-  _adminMsg('Company access updated — '+(c?c.name:'all companies')+'.','var(--success)');
+  _profCompanies[id]=slugs.length?slugs:null;
+  if(_adminUsersCache) renderAdminUsers(_adminUsersCache);
+  _adminMsg('Company access updated — '+(slugs.length?_companyNames(slugs).join(', '):'Telemax only')+'.','var(--success)');
 }
 
 function renderAdminUsers(users){
@@ -868,7 +921,7 @@ function renderAdminUsers(users){
           +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
           +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
         +'</select>'
-        +_companyCell(u)
+        +_companyCell(u, true)   // edit row has no panel below it to expand into
         +statusCell
         +loginCell
         +'<div class="au-actions">'
@@ -899,6 +952,7 @@ function renderAdminUsers(users){
       +'<div class="au-detail" id="au-detail-'+u.id+'" style="display:none;">'
         +'Last login IP: <b id="au-ip-'+u.id+'">&hellip;</b><span style="color:var(--text3);"> &middot; </span>Approx location: <span id="au-geo-'+u.id+'">&hellip;</span>'
       +'</div>'
+      +_companyPanel(u)
     +'</div>';
   }).join('');
 }
@@ -1238,14 +1292,14 @@ async function initCompanies(){
     var res=await _sb.from('companies').select('*').order('is_default',{ascending:false}).order('name');
     _companies=(res&&res.data)||[];
   }catch(e){ _companies=[]; }
-  // A company-scoped user only ever sees their own company. RLS enforces this
-  // server-side as well; this keeps the UI consistent with it.
-  if(currentCompany && currentRole!=='admin'){
-    _companies=_companies.filter(function(c){ return c.slug===currentCompany; });
+  // A scoped user only ever sees the companies they were granted. RLS enforces
+  // this server-side as well; this keeps the UI consistent with it. Users with
+  // more than one grant keep a working switcher.
+  if(currentCompanies && currentRole!=='admin'){
+    _companies=_companies.filter(function(c){ return currentCompanies.indexOf(c.slug)>=0; });
   }
   var saved=null; try{ saved=localStorage.getItem('diq_company'); }catch(e){}
-  _activeCompany = (currentCompany ? _companies.find(function(c){return c.slug===currentCompany;}) : null)
-                || _companies.find(function(c){return c.slug===saved;})
+  _activeCompany = _companies.find(function(c){return c.slug===saved;})
                 || _companies.find(function(c){return c.is_default;})
                 || _companies[0] || null;
   renderCompanySwitch();
@@ -1257,8 +1311,8 @@ function renderCompanySwitch(){
   el.innerHTML=_companies.map(function(c){
     return '<option value="'+esc(c.slug)+'"'+(_activeCompany&&c.slug===_activeCompany.slug?' selected':'')+'>'+esc(c.name)+'</option>';
   }).join('');
-  // Scoped users can't switch — render their company as a static label instead.
-  var locked = !!currentCompany && currentRole!=='admin';
+  // Nothing to switch between — render the one company as a static label.
+  var locked = _companies.length<2;
   el.classList.toggle('locked', locked);
   el.title = locked ? 'Your dashboard' : 'Select company';
 }
