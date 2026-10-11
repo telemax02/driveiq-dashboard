@@ -777,7 +777,12 @@ async function loadRole(){
       var d=(r&&r.data)||{};
       currentRole=d.role||'user';
       currentCompanies=_companySet(d);
-      currentCompany=currentCompanies?currentCompanies[0]:null;
+      // company_slug is the user's HOME company — which fleet they land on. Only
+      // honour it while it's still one they're granted, so narrowing someone's
+      // access can't strand them on a company they can no longer read.
+      currentCompany=(d.company_slug && (!currentCompanies || currentCompanies.indexOf(d.company_slug)>=0))
+        ? d.company_slug
+        : (currentCompanies?currentCompanies[0]:null);
     }
   }catch(e){ currentRole='user'; currentCompany=null; currentCompanies=null; }
   applyRoleUI();
@@ -840,14 +845,17 @@ function _splitName(nm){ var p=(nm||'').trim().split(/\s+/).filter(Boolean); var
 // ── Per-user company scoping (profiles.company_slug) ───────────────────────
 // Admins already hold profiles_read / profiles_admin_update, so assigning a
 // user to a company is a direct table update — no edge function needed.
-var _profCompanies={};
+var _profCompanies={}, _profHome={};
 async function loadProfileCompanies(){
   try{
     var r=await _sb.from('profiles').select('id, company_slug, company_slugs');
     if(r&&r.error) r=await _sb.from('profiles').select('id, company_slug');
     if(r&&r.error) return;   // columns absent until the access migrations run
-    _profCompanies={};
-    (r.data||[]).forEach(function(p){ _profCompanies[p.id]=_companySet(p); });
+    _profCompanies={}; _profHome={};
+    (r.data||[]).forEach(function(p){
+      _profCompanies[p.id]=_companySet(p);
+      _profHome[p.id]=p.company_slug||null;
+    });
   }catch(e){ /* leave the last-known map in place */ }
 }
 function _companyNames(set){
@@ -892,13 +900,17 @@ function toggleCompanyPanel(id){
 async function saveUserCompanies(id){
   var box=document.getElementById('au-co-boxes-'+id); if(!box) return;
   var slugs=[].slice.call(box.querySelectorAll('input:checked')).map(function(i){ return i.value; });
-  // Keep Stage 2's company_slug in step so a stale client (or user_companies()'s
-  // fallback) can't resurrect an access level the admin just revoked.
+  // company_slug stays the user's home company (which fleet they land on). Keep
+  // it inside the granted set, so revoking access can't strand them on a
+  // company they can no longer read, and so the pre-Stage-3 frontend — which
+  // still reads this column — scopes them to something valid.
+  var home=_profHome[id];
+  if(slugs.indexOf(home)<0) home=slugs[0]||null;
   var res=await _sb.from('profiles')
-    .update({company_slugs: slugs.length?slugs:null, company_slug: slugs.length===1?slugs[0]:null})
+    .update({company_slugs: slugs.length?slugs:null, company_slug: home})
     .eq('id', id);
   if(res&&res.error){ _adminMsg('Could not set company access: '+esc(res.error.message),'var(--danger)'); return; }
-  _profCompanies[id]=slugs.length?slugs:null;
+  _profCompanies[id]=slugs.length?slugs:null; _profHome[id]=home;
   if(_adminUsersCache) renderAdminUsers(_adminUsersCache);
   _adminMsg('Company access updated — '+(slugs.length?_companyNames(slugs).join(', '):'Telemax only')+'.','var(--success)');
 }
@@ -1299,7 +1311,10 @@ async function initCompanies(){
     _companies=_companies.filter(function(c){ return currentCompanies.indexOf(c.slug)>=0; });
   }
   var saved=null; try{ saved=localStorage.getItem('diq_company'); }catch(e){}
+  // Their own last choice wins; otherwise their home company, so a KARMO user
+  // granted Telemax as well still opens on KARMO rather than the global default.
   _activeCompany = _companies.find(function(c){return c.slug===saved;})
+                || (currentCompany?_companies.find(function(c){return c.slug===currentCompany;}):null)
                 || _companies.find(function(c){return c.is_default;})
                 || _companies[0] || null;
   renderCompanySwitch();
